@@ -686,6 +686,8 @@ ratbag_create_profile(struct ratbag_device *device,
 	profile->debounce = -1;
 	profile->bhop_timeout = -1;
 	profile->alternate_resolution = -1;
+	profile->power_save_timeout = -1;
+	profile->power_off_timeout = -1;
 
 	list_append(&device->profiles, &profile->link);
 	list_init(&profile->buttons);
@@ -871,6 +873,8 @@ ratbag_device_commit(struct ratbag_device *device)
 		profile->debounce_dirty = false;
 		profile->bhop_timeout_dirty = false;
 		profile->alternate_resolution_dirty = false;
+		profile->power_save_timeout_dirty = false;
+		profile->power_off_timeout_dirty = false;
 		profile->rate_dirty = false;
 
 		list_for_each(button, &profile->buttons, link)
@@ -1203,6 +1207,51 @@ LIBRATBAG_EXPORT int
 ratbag_profile_get_alternate_resolution(const struct ratbag_profile *profile)
 {
 	return profile->alternate_resolution;
+}
+
+LIBRATBAG_EXPORT enum ratbag_error_code
+ratbag_profile_set_power_save_timeout(struct ratbag_profile *profile,
+				      int seconds)
+{
+	/* Stored as an unsigned 16-bit value in seconds */
+	if (seconds != -1 && (seconds < 0 || seconds > 0xFFFF))
+		return RATBAG_ERROR_VALUE;
+
+	if (profile->power_save_timeout != seconds) {
+		profile->power_save_timeout = seconds;
+		profile->dirty = true;
+		profile->power_save_timeout_dirty = true;
+	}
+
+	return RATBAG_SUCCESS;
+}
+
+LIBRATBAG_EXPORT int
+ratbag_profile_get_power_save_timeout(const struct ratbag_profile *profile)
+{
+	return profile->power_save_timeout;
+}
+
+LIBRATBAG_EXPORT enum ratbag_error_code
+ratbag_profile_set_power_off_timeout(struct ratbag_profile *profile,
+				     int seconds)
+{
+	if (seconds != -1 && (seconds < 0 || seconds > 0xFFFF))
+		return RATBAG_ERROR_VALUE;
+
+	if (profile->power_off_timeout != seconds) {
+		profile->power_off_timeout = seconds;
+		profile->dirty = true;
+		profile->power_off_timeout_dirty = true;
+	}
+
+	return RATBAG_SUCCESS;
+}
+
+LIBRATBAG_EXPORT int
+ratbag_profile_get_power_off_timeout(const struct ratbag_profile *profile)
+{
+	return profile->power_off_timeout;
 }
 
 LIBRATBAG_EXPORT int

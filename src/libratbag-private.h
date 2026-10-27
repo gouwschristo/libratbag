@@ -285,6 +285,11 @@ struct ratbag_profile {
 	int alternate_resolution;
 	bool alternate_resolution_dirty;
 
+	int power_save_timeout;		/**< seconds, -1 if unsupported */
+	bool power_save_timeout_dirty;
+	int power_off_timeout;		/**< seconds, -1 if unsupported */
+	bool power_off_timeout_dirty;
+
 	unsigned int num_resolutions;
 
 	bool is_active;		/**< profile is the currently active one */

@@ -646,6 +646,46 @@ def func_shift_resolution_set(ratbagd: Ratbagd, args: argparse.Namespace) -> Non
     commit(device, args)
 
 
+def func_power_save_timeout_get(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
+    profile, _device = find_profile(ratbagd, args)
+    if profile.power_save_timeout == -1:
+        print("The device does not support a power-save timeout")
+        sys.exit(1)
+    print(profile.power_save_timeout)
+
+
+def func_power_save_timeout_set(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
+    profile, device = find_profile(ratbagd, args)
+    if profile.power_save_timeout == -1:
+        print("The device does not support a power-save timeout")
+        sys.exit(1)
+    if not 0 <= args.timeout_n <= 0xFFFF:
+        print("The timeout must be between 0 and 65535 seconds")
+        sys.exit(1)
+    profile.power_save_timeout = args.timeout_n
+    commit(device, args)
+
+
+def func_power_off_timeout_get(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
+    profile, _device = find_profile(ratbagd, args)
+    if profile.power_off_timeout == -1:
+        print("The device does not support a power-off timeout")
+        sys.exit(1)
+    print(profile.power_off_timeout)
+
+
+def func_power_off_timeout_set(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
+    profile, device = find_profile(ratbagd, args)
+    if profile.power_off_timeout == -1:
+        print("The device does not support a power-off timeout")
+        sys.exit(1)
+    if not 0 <= args.timeout_n <= 0xFFFF:
+        print("The timeout must be between 0 and 65535 seconds")
+        sys.exit(1)
+    profile.power_off_timeout = args.timeout_n
+    commit(device, args)
+
+
 def func_profile_get(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
     profile, device = find_profile(ratbagd, args)
     print_profile(device, profile, 0)
@@ -940,6 +980,14 @@ parser_def: List[RatbagParserSchemaElement] = [
                 {
                     of_type: link,
                     dest: "shift_resolution",
+                },
+                {
+                    of_type: link,
+                    dest: "power_save_timeout",
+                },
+                {
+                    of_type: link,
+                    dest: "power_off_timeout",
                 },
                 {
                     of_type: link,
@@ -1281,6 +1329,72 @@ if none is given.""",
                     },
                 ],
                 func: func_shift_resolution_set,
+            },
+        ],
+    },
+    {
+        of_type: switch,
+        name: "power_save_timeout",
+        help_str: """Access power-save timeout
+
+PowerSaveTimeout commands work on the given profile, or on the active profile if none
+is given.""",
+        tag: "power_save_timeout",
+        group: "PowerSaveTimeout",
+        switch: [
+            {
+                of_type: command,
+                name: "get",
+                help_str: "Show the current power-save timeout",
+                func: func_power_save_timeout_get,
+            },
+            {
+                of_type: command,
+                name: "set",
+                help_str: "Set the power-save timeout to N seconds",
+                pos_args: [
+                    {
+                        of_type: argument,
+                        name: "timeout_n",
+                        metavar: "N",
+                        help_str: "The timeout in seconds",
+                        arg_type: int,
+                    },
+                ],
+                func: func_power_save_timeout_set,
+            },
+        ],
+    },
+    {
+        of_type: switch,
+        name: "power_off_timeout",
+        help_str: """Access power-off timeout
+
+PowerOffTimeout commands work on the given profile, or on the active profile if none
+is given.""",
+        tag: "power_off_timeout",
+        group: "PowerOffTimeout",
+        switch: [
+            {
+                of_type: command,
+                name: "get",
+                help_str: "Show the current power-off timeout",
+                func: func_power_off_timeout_get,
+            },
+            {
+                of_type: command,
+                name: "set",
+                help_str: "Set the power-off timeout to N seconds",
+                pos_args: [
+                    {
+                        of_type: argument,
+                        name: "timeout_n",
+                        metavar: "N",
+                        help_str: "The timeout in seconds",
+                        arg_type: int,
+                    },
+                ],
+                func: func_power_off_timeout_set,
             },
         ],
     },

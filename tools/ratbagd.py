@@ -441,6 +441,8 @@ class RatbagdProfile(_RatbagdDBus):
         self._angle_snapping = self._get_dbus_property("AngleSnapping")
         self._bhop_timeout = self._get_dbus_property("BhopTimeout")
         self._shift_resolution = self._get_dbus_property("ShiftResolution")
+        self._power_save_timeout = self._get_dbus_property("PowerSaveTimeout")
+        self._power_off_timeout = self._get_dbus_property("PowerOffTimeout")
         self._debounce = self._get_dbus_property("Debounce")
         self._dirty = self._get_dbus_property("IsDirty")
         self._disabled = self._get_dbus_property("Disabled")
@@ -509,6 +511,26 @@ class RatbagdProfile(_RatbagdDBus):
             if shift_resolution != self._shift_resolution:
                 self._shift_resolution = shift_resolution
                 self.notify("shift-resolution")
+
+        try:
+            power_save_timeout = changed_props["PowerSaveTimeout"]
+        except KeyError:
+            # Different property changed, skip.
+            pass
+        else:
+            if power_save_timeout != self._power_save_timeout:
+                self._power_save_timeout = power_save_timeout
+                self.notify("power-save-timeout")
+
+        try:
+            power_off_timeout = changed_props["PowerOffTimeout"]
+        except KeyError:
+            # Different property changed, skip.
+            pass
+        else:
+            if power_off_timeout != self._power_off_timeout:
+                self._power_off_timeout = power_off_timeout
+                self.notify("power-off-timeout")
 
         try:
             disabled = changed_props["Disabled"]
@@ -664,6 +686,26 @@ class RatbagdProfile(_RatbagdDBus):
         @param value A resolution index of this profile
         """
         self._set_dbus_property("ShiftResolution", "i", value)
+
+    @GObject.Property
+    def power_save_timeout(self):
+        """The power-save timeout in seconds, -1 if unsupported."""
+        return self._power_save_timeout
+
+    @power_save_timeout.setter
+    def power_save_timeout(self, value):
+        """Set the power-save timeout in seconds."""
+        self._set_dbus_property("PowerSaveTimeout", "i", value)
+
+    @GObject.Property
+    def power_off_timeout(self):
+        """The power-off timeout in seconds, -1 if unsupported."""
+        return self._power_off_timeout
+
+    @power_off_timeout.setter
+    def power_off_timeout(self, value):
+        """Set the power-off timeout in seconds."""
+        self._set_dbus_property("PowerOffTimeout", "i", value)
 
     @GObject.Property
     def debounces(self):

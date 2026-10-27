@@ -873,6 +873,59 @@ ratbag_profile_get_alternate_resolution(const struct ratbag_profile *profile);
 /**
  * @ingroup profile
  *
+ * Set how long the device stays awake after the last input before entering a
+ * low-power state, in seconds. 0 disables the timeout.
+ *
+ * @param profile A previously initialized ratbag profile
+ * @param seconds Timeout in seconds (0..65535), or -1 if unsupported
+ *
+ * @return zero on success or an error code on failure
+ */
+enum ratbag_error_code
+ratbag_profile_set_power_save_timeout(struct ratbag_profile *profile,
+				      int seconds);
+
+/**
+ * @ingroup profile
+ *
+ * Get the power-save timeout in seconds.
+ *
+ * @param profile A previously initialized ratbag profile
+ *
+ * @return Timeout in seconds, -1 if the device does not support it
+ */
+int
+ratbag_profile_get_power_save_timeout(const struct ratbag_profile *profile);
+
+/**
+ * @ingroup profile
+ *
+ * Set how long the device waits before powering off, in seconds.
+ *
+ * @param profile A previously initialized ratbag profile
+ * @param seconds Timeout in seconds (0..65535), or -1 if unsupported
+ *
+ * @return zero on success or an error code on failure
+ */
+enum ratbag_error_code
+ratbag_profile_set_power_off_timeout(struct ratbag_profile *profile,
+				     int seconds);
+
+/**
+ * @ingroup profile
+ *
+ * Get the power-off timeout in seconds.
+ *
+ * @param profile A previously initialized ratbag profile
+ *
+ * @return Timeout in seconds, -1 if the device does not support it
+ */
+int
+ratbag_profile_get_power_off_timeout(const struct ratbag_profile *profile);
+
+/**
+ * @ingroup profile
+ *
  * Set the debounce time in ms for the profile.
  *
  * If the profile mode is the currently active profile,

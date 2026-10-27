@@ -1386,6 +1386,23 @@ hidpp20drv_update_alternate_resolution(struct ratbag_profile *profile)
 }
 
 static int
+hidpp20drv_update_power_timeouts(struct ratbag_profile *profile)
+{
+	struct ratbag_device *device = profile->device;
+	struct hidpp20drv_data *drv_data = ratbag_get_drv_data(device);
+	struct hidpp20_profile *h_profile;
+
+	if (!(drv_data->capabilities & HIDPP_CAP_ONBOARD_PROFILES_8100))
+		return -ENOTSUP;
+
+	h_profile = &drv_data->profiles->profiles[profile->index];
+	h_profile->powersave_timeout = profile->power_save_timeout;
+	h_profile->poweroff_timeout = profile->power_off_timeout;
+
+	return RATBAG_SUCCESS;
+}
+
+static int
 hidpp20drv_read_profile_name_8100(struct ratbag_profile *profile)
 {
 	struct ratbag_device *device = profile->device;
@@ -1672,6 +1689,9 @@ hidpp20drv_read_profile_8100(struct ratbag_profile *profile)
 
 	/* Resolution used while the alternate-DPI action is held */
 	profile->alternate_resolution = p->switched_dpi;
+
+	profile->power_save_timeout = p->powersave_timeout;
+	profile->power_off_timeout = p->poweroff_timeout;
 }
 
 static int
@@ -1966,6 +1986,14 @@ hidpp20drv_commit(struct ratbag_device *device)
 			rc = hidpp20drv_update_alternate_resolution(profile);
 			if (rc) {
 				log_error(device->ratbag, "hidpp20: failed to update alternate resolution (%d)\n", rc);
+				return RATBAG_ERROR_DEVICE;
+			}
+		}
+
+		if (profile->power_save_timeout_dirty || profile->power_off_timeout_dirty) {
+			rc = hidpp20drv_update_power_timeouts(profile);
+			if (rc) {
+				log_error(device->ratbag, "hidpp20: failed to update power timeouts (%d)\n", rc);
 				return RATBAG_ERROR_DEVICE;
 			}
 		}

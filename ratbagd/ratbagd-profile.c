@@ -526,6 +526,36 @@ ratbagd_profile_get_shift_resolution(sd_bus *bus,
 }
 
 static int
+ratbagd_profile_get_power_save_timeout(sd_bus *bus,
+				       const char *path,
+				       const char *interface,
+				       const char *property,
+				       sd_bus_message *reply,
+				       void *userdata,
+				       sd_bus_error *error)
+{
+	struct ratbagd_profile *profile = userdata;
+
+	return sd_bus_message_append(reply, "i",
+				     ratbag_profile_get_power_save_timeout(profile->lib_profile));
+}
+
+static int
+ratbagd_profile_get_power_off_timeout(sd_bus *bus,
+				      const char *path,
+				      const char *interface,
+				      const char *property,
+				      sd_bus_message *reply,
+				      void *userdata,
+				      sd_bus_error *error)
+{
+	struct ratbagd_profile *profile = userdata;
+
+	return sd_bus_message_append(reply, "i",
+				     ratbag_profile_get_power_off_timeout(profile->lib_profile));
+}
+
+static int
 ratbagd_profile_get_debounce(sd_bus *bus,
 			     const char *path,
 			     const char *interface,
@@ -748,6 +778,76 @@ ratbagd_profile_set_shift_resolution(sd_bus *bus,
 }
 
 static int
+ratbagd_profile_set_power_save_timeout(sd_bus *bus,
+				       const char *path,
+				       const char *interface,
+				       const char *property,
+				       sd_bus_message *m,
+				       void *userdata,
+				       sd_bus_error *error)
+{
+	struct ratbagd_profile *profile = userdata;
+	int value;
+	int r;
+
+	r = sd_bus_message_read(m, "i", &value);
+	if (r < 0)
+		return r;
+
+	r = ratbag_profile_set_power_save_timeout(profile->lib_profile, value);
+	if (r == RATBAG_ERROR_VALUE)
+		return sd_bus_error_setf(error, SD_BUS_ERROR_INVALID_ARGS,
+					 "Power-save timeout must be between 0 and 65535 seconds");
+	if (r == 0) {
+		sd_bus *bus = sd_bus_message_get_bus(m);
+		sd_bus_emit_properties_changed(bus,
+					       profile->path,
+					       RATBAGD_NAME_ROOT ".Profile",
+					       "PowerSaveTimeout",
+					       NULL);
+
+		ratbagd_profile_notify_dirty(bus, profile);
+	}
+
+	return 0;
+}
+
+static int
+ratbagd_profile_set_power_off_timeout(sd_bus *bus,
+				      const char *path,
+				      const char *interface,
+				      const char *property,
+				      sd_bus_message *m,
+				      void *userdata,
+				      sd_bus_error *error)
+{
+	struct ratbagd_profile *profile = userdata;
+	int value;
+	int r;
+
+	r = sd_bus_message_read(m, "i", &value);
+	if (r < 0)
+		return r;
+
+	r = ratbag_profile_set_power_off_timeout(profile->lib_profile, value);
+	if (r == RATBAG_ERROR_VALUE)
+		return sd_bus_error_setf(error, SD_BUS_ERROR_INVALID_ARGS,
+					 "Power-off timeout must be between 0 and 65535 seconds");
+	if (r == 0) {
+		sd_bus *bus = sd_bus_message_get_bus(m);
+		sd_bus_emit_properties_changed(bus,
+					       profile->path,
+					       RATBAGD_NAME_ROOT ".Profile",
+					       "PowerOffTimeout",
+					       NULL);
+
+		ratbagd_profile_notify_dirty(bus, profile);
+	}
+
+	return 0;
+}
+
+static int
 ratbagd_profile_set_debounce(sd_bus *bus,
 			     const char *path,
 			     const char *interface,
@@ -815,6 +915,14 @@ const sd_bus_vtable ratbagd_profile_vtable[] = {
 	SD_BUS_WRITABLE_PROPERTY("ShiftResolution", "i",
 				 ratbagd_profile_get_shift_resolution,
 				 ratbagd_profile_set_shift_resolution, 0,
+				 SD_BUS_VTABLE_UNPRIVILEGED|SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
+	SD_BUS_WRITABLE_PROPERTY("PowerSaveTimeout", "i",
+				 ratbagd_profile_get_power_save_timeout,
+				 ratbagd_profile_set_power_save_timeout, 0,
+				 SD_BUS_VTABLE_UNPRIVILEGED|SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
+	SD_BUS_WRITABLE_PROPERTY("PowerOffTimeout", "i",
+				 ratbagd_profile_get_power_off_timeout,
+				 ratbagd_profile_set_power_off_timeout, 0,
 				 SD_BUS_VTABLE_UNPRIVILEGED|SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
 	SD_BUS_PROPERTY("ReportRates", "au", ratbagd_profile_get_report_rates, 0, SD_BUS_VTABLE_PROPERTY_CONST),
 	SD_BUS_PROPERTY("Debounces", "au", ratbagd_profile_get_debounces, 0, SD_BUS_VTABLE_PROPERTY_CONST),
