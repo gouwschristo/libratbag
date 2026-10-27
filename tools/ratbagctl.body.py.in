@@ -508,6 +508,26 @@ def func_angle_snapping_set(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
     commit(device, args)
 
 
+def func_bhop_timeout_get(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
+    profile, _device = find_profile(ratbagd, args)
+    if profile.bhop_timeout == -1:
+        print("The device does not support a bunny-hopping timeout")
+        sys.exit(1)
+    print(profile.bhop_timeout)
+
+
+def func_bhop_timeout_set(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
+    profile, device = find_profile(ratbagd, args)
+    if profile.bhop_timeout == -1:
+        print("The device does not support a bunny-hopping timeout")
+        sys.exit(1)
+    if args.bhop_n < 0 or args.bhop_n > 25500 or args.bhop_n % 100 != 0:
+        print("The timeout must be a multiple of 100 between 0 and 25500 ms")
+        sys.exit(1)
+    profile.bhop_timeout = args.bhop_n
+    commit(device, args)
+
+
 def func_debounce_get(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
     profile, _device = find_profile(ratbagd, args)
     if profile.debounce == -1:
@@ -606,6 +626,26 @@ def func_resolution_lod_set(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
     commit(device, args)
 
 
+def func_shift_resolution_get(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
+    profile, _device = find_profile(ratbagd, args)
+    if profile.shift_resolution == -1:
+        print("The device does not support an alternate resolution")
+        sys.exit(1)
+    print(profile.shift_resolution)
+
+
+def func_shift_resolution_set(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
+    profile, device = find_profile(ratbagd, args)
+    if profile.shift_resolution == -1:
+        print("The device does not support an alternate resolution")
+        sys.exit(1)
+    if not 0 <= args.shift_n < len(profile.resolutions):
+        print(f"Invalid resolution index {args.shift_n}")
+        sys.exit(1)
+    profile.shift_resolution = args.shift_n
+    commit(device, args)
+
+
 def func_profile_get(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
     profile, device = find_profile(ratbagd, args)
     print_profile(device, profile, 0)
@@ -622,7 +662,12 @@ def func_profile_name_get(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
 
 def func_profile_name_set(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
     profile, device = find_profile(ratbagd, args)
-    if not profile.name:
+    # Devices that support names advertise it; a writable profile may still
+    # have no name yet, so an empty name alone is not a reason to refuse.
+    if (
+        RatbagdProfile.CAP_WRITABLE_NAME not in profile.capabilities
+        and not profile.name
+    ):
         raise RatbagCapabilityError(
             "assigning a profile name is not supported on this profile"
         )
@@ -887,6 +932,14 @@ parser_def: List[RatbagParserSchemaElement] = [
                 {
                     of_type: link,
                     dest: "angle_snapping",
+                },
+                {
+                    of_type: link,
+                    dest: "bhop_timeout",
+                },
+                {
+                    of_type: link,
+                    dest: "shift_resolution",
                 },
                 {
                     of_type: link,
@@ -1161,6 +1214,73 @@ Angle snapping commands work on the given profile, or on the active profile if n
                     },
                 ],
                 func: func_angle_snapping_set,
+            },
+        ],
+    },
+    {
+        of_type: switch,
+        name: "bhop_timeout",
+        help_str: """Access bunny-hopping timeout information
+
+BHOP timeout commands work on the given profile, or on the active profile if
+none is given. The value is in ms and must be a multiple of 100 (0 disables the
+feature).""",
+        tag: "bhop_timeout",
+        group: "BhopTimeout",
+        switch: [
+            {
+                of_type: command,
+                name: "get",
+                help_str: "Show the current bunny-hopping timeout",
+                func: func_bhop_timeout_get,
+            },
+            {
+                of_type: command,
+                name: "set",
+                help_str: "Set the bunny-hopping timeout to N ms",
+                pos_args: [
+                    {
+                        of_type: argument,
+                        name: "bhop_n",
+                        metavar: "N",
+                        help_str: "The timeout in ms: 0 off, otherwise a multiple of 100",
+                        arg_type: int,
+                    },
+                ],
+                func: func_bhop_timeout_set,
+            },
+        ],
+    },
+    {
+        of_type: switch,
+        name: "shift_resolution",
+        help_str: """Access the resolution used while the alternate-DPI (G-shift) action is held
+
+Shift resolution commands work on the given profile, or on the active profile
+if none is given.""",
+        tag: "shift_resolution",
+        group: "ShiftResolution",
+        switch: [
+            {
+                of_type: command,
+                name: "get",
+                help_str: "Show the alternate-DPI resolution index",
+                func: func_shift_resolution_get,
+            },
+            {
+                of_type: command,
+                name: "set",
+                help_str: "Set the alternate-DPI resolution to N",
+                pos_args: [
+                    {
+                        of_type: argument,
+                        name: "shift_n",
+                        metavar: "N",
+                        help_str: "The resolution index to use while the action is held",
+                        arg_type: int,
+                    },
+                ],
+                func: func_shift_resolution_set,
             },
         ],
     },

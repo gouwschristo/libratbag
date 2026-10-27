@@ -277,6 +277,14 @@ struct ratbag_profile {
 	unsigned int debounces[8];	/**< debounce times available */
 	size_t ndebounces;		/**< number of entries in debounces */
 
+	int bhop_timeout;	/**< bunny-hopping timeout in ms, -1 if unsupported */
+	bool bhop_timeout_dirty;
+
+	/**< resolution index used while the alternate-DPI (G-shift) action is
+	 * active, -1 if unsupported */
+	int alternate_resolution;
+	bool alternate_resolution_dirty;
+
 	unsigned int num_resolutions;
 
 	bool is_active;		/**< profile is the currently active one */

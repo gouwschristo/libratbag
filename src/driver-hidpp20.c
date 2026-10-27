@@ -1354,6 +1354,38 @@ hidpp20drv_update_report_rate(struct ratbag_profile *profile, int hz)
 }
 
 static int
+hidpp20drv_update_bhop_timeout(struct ratbag_profile *profile)
+{
+	struct ratbag_device *device = profile->device;
+	struct hidpp20drv_data *drv_data = ratbag_get_drv_data(device);
+	struct hidpp20_profile *h_profile;
+
+	if (!(drv_data->capabilities & HIDPP_CAP_ONBOARD_PROFILES_8100))
+		return -ENOTSUP;
+
+	h_profile = &drv_data->profiles->profiles[profile->index];
+	h_profile->bhop_timeout = profile->bhop_timeout / 100;
+
+	return RATBAG_SUCCESS;
+}
+
+static int
+hidpp20drv_update_alternate_resolution(struct ratbag_profile *profile)
+{
+	struct ratbag_device *device = profile->device;
+	struct hidpp20drv_data *drv_data = ratbag_get_drv_data(device);
+	struct hidpp20_profile *h_profile;
+
+	if (!(drv_data->capabilities & HIDPP_CAP_ONBOARD_PROFILES_8100))
+		return -ENOTSUP;
+
+	h_profile = &drv_data->profiles->profiles[profile->index];
+	h_profile->switched_dpi = profile->alternate_resolution;
+
+	return RATBAG_SUCCESS;
+}
+
+static int
 hidpp20drv_read_profile_name_8100(struct ratbag_profile *profile)
 {
 	struct ratbag_device *device = profile->device;
@@ -1556,6 +1588,7 @@ hidpp20drv_read_profile_8100(struct ratbag_profile *profile)
 	p = &drv_data->profiles->profiles[profile->index];
 
 	hidpp20drv_read_profile_name_8100(profile);
+	ratbag_profile_set_cap(profile, RATBAG_PROFILE_CAP_WRITABLE_NAME);
 
 	ratbag_profile_for_each_resolution(profile, res) {
 		struct hidpp20_sensor *sensor;
@@ -1633,6 +1666,12 @@ hidpp20drv_read_profile_8100(struct ratbag_profile *profile)
 	} else {
 		profile->hz = 1000 / max(1, p->report_rate);
 	}
+
+	/* Stored in 100 ms steps, 0 meaning "off" */
+	profile->bhop_timeout = p->bhop_timeout * 100;
+
+	/* Resolution used while the alternate-DPI action is held */
+	profile->alternate_resolution = p->switched_dpi;
 }
 
 static int
@@ -1911,6 +1950,22 @@ hidpp20drv_commit(struct ratbag_device *device)
 			rc = hidpp20drv_update_report_rate(profile, profile->hz);
 			if (rc) {
 				log_error(device->ratbag, "hidpp20: failed to update report rate (%d)\n", rc);
+				return RATBAG_ERROR_DEVICE;
+			}
+		}
+
+		if (profile->bhop_timeout_dirty) {
+			rc = hidpp20drv_update_bhop_timeout(profile);
+			if (rc) {
+				log_error(device->ratbag, "hidpp20: failed to update BHOP timeout (%d)\n", rc);
+				return RATBAG_ERROR_DEVICE;
+			}
+		}
+
+		if (profile->alternate_resolution_dirty) {
+			rc = hidpp20drv_update_alternate_resolution(profile);
+			if (rc) {
+				log_error(device->ratbag, "hidpp20: failed to update alternate resolution (%d)\n", rc);
 				return RATBAG_ERROR_DEVICE;
 			}
 		}

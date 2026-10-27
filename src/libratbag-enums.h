@@ -82,6 +82,13 @@ enum ratbag_profile_capability {
 	RATBAG_PROFILE_CAP_NONE = 0,
 
 	/**
+	 * The profile name can be written to the device. Tools must not use an
+	 * empty name to mean "unsupported": a writable profile may simply have
+	 * no name yet.
+	 */
+	RATBAG_PROFILE_CAP_WRITABLE_NAME = 100,
+
+	/**
 	 * This profile can be assigned as the default profile. A default
 	 * profile is the profile that is selected when the device
 	 * is plugged in. Where no profile is assigned as the default

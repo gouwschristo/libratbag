@@ -439,6 +439,8 @@ class RatbagdProfile(_RatbagdDBus):
         super().__init__("Profile", object_path)
         self._active = self._get_dbus_property("IsActive")
         self._angle_snapping = self._get_dbus_property("AngleSnapping")
+        self._bhop_timeout = self._get_dbus_property("BhopTimeout")
+        self._shift_resolution = self._get_dbus_property("ShiftResolution")
         self._debounce = self._get_dbus_property("Debounce")
         self._dirty = self._get_dbus_property("IsDirty")
         self._disabled = self._get_dbus_property("Disabled")
@@ -487,6 +489,26 @@ class RatbagdProfile(_RatbagdDBus):
             if debounce != self._debounce:
                 self._debounce = debounce
                 self.notify("debounce")
+
+        try:
+            bhop_timeout = changed_props["BhopTimeout"]
+        except KeyError:
+            # Different property changed, skip.
+            pass
+        else:
+            if bhop_timeout != self._bhop_timeout:
+                self._bhop_timeout = bhop_timeout
+                self.notify("bhop-timeout")
+
+        try:
+            shift_resolution = changed_props["ShiftResolution"]
+        except KeyError:
+            # Different property changed, skip.
+            pass
+        else:
+            if shift_resolution != self._shift_resolution:
+                self._shift_resolution = shift_resolution
+                self.notify("shift-resolution")
 
         try:
             disabled = changed_props["Disabled"]
@@ -615,6 +637,33 @@ class RatbagdProfile(_RatbagdDBus):
         @param value The button debounce time, as int
         """
         self._set_dbus_property("Debounce", "i", value)
+
+    @GObject.Property
+    def bhop_timeout(self):
+        """The bunny-hopping timeout in ms, -1 if unsupported."""
+        return self._bhop_timeout
+
+    @bhop_timeout.setter
+    def bhop_timeout(self, value):
+        """Set the bunny-hopping timeout in ms.
+
+        @param value The timeout in ms (0 or a multiple of 100 up to 25500)
+        """
+        self._set_dbus_property("BhopTimeout", "i", value)
+
+    @GObject.Property
+    def shift_resolution(self):
+        """The resolution index used while the alternate-DPI (G-shift) action
+        is held, -1 if unsupported."""
+        return self._shift_resolution
+
+    @shift_resolution.setter
+    def shift_resolution(self, value):
+        """Set the alternate-DPI resolution index.
+
+        @param value A resolution index of this profile
+        """
+        self._set_dbus_property("ShiftResolution", "i", value)
 
     @GObject.Property
     def debounces(self):

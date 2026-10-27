@@ -684,6 +684,8 @@ ratbag_create_profile(struct ratbag_device *device,
 	profile->name = NULL;
 	profile->angle_snapping = -1;
 	profile->debounce = -1;
+	profile->bhop_timeout = -1;
+	profile->alternate_resolution = -1;
 
 	list_append(&device->profiles, &profile->link);
 	list_init(&profile->buttons);
@@ -867,6 +869,8 @@ ratbag_device_commit(struct ratbag_device *device)
 
 		profile->angle_snapping_dirty = false;
 		profile->debounce_dirty = false;
+		profile->bhop_timeout_dirty = false;
+		profile->alternate_resolution_dirty = false;
 		profile->rate_dirty = false;
 
 		list_for_each(button, &profile->buttons, link)
@@ -1153,6 +1157,52 @@ LIBRATBAG_EXPORT int
 ratbag_profile_get_angle_snapping(const struct ratbag_profile *profile)
 {
 	return profile->angle_snapping;
+}
+
+LIBRATBAG_EXPORT enum ratbag_error_code
+ratbag_profile_set_bhop_timeout(struct ratbag_profile *profile, int value)
+{
+	/* The field is one byte in 100 ms steps, so the expressible range is
+	 * 0..25500. G HUB's UI only offers 0, 100 and 1000, but keeping the full
+	 * range means a value read from the device can be written back. */
+	if (value != -1 && (value < 0 || value > 25500 || value % 100 != 0))
+		return RATBAG_ERROR_VALUE;
+
+	if (profile->bhop_timeout != value) {
+		profile->bhop_timeout = value;
+		profile->dirty = true;
+		profile->bhop_timeout_dirty = true;
+	}
+
+	return RATBAG_SUCCESS;
+}
+
+LIBRATBAG_EXPORT int
+ratbag_profile_get_bhop_timeout(const struct ratbag_profile *profile)
+{
+	return profile->bhop_timeout;
+}
+
+LIBRATBAG_EXPORT enum ratbag_error_code
+ratbag_profile_set_alternate_resolution(struct ratbag_profile *profile,
+					int index)
+{
+	if (index != -1 && (index < 0 || (unsigned int)index >= profile->num_resolutions))
+		return RATBAG_ERROR_VALUE;
+
+	if (profile->alternate_resolution != index) {
+		profile->alternate_resolution = index;
+		profile->dirty = true;
+		profile->alternate_resolution_dirty = true;
+	}
+
+	return RATBAG_SUCCESS;
+}
+
+LIBRATBAG_EXPORT int
+ratbag_profile_get_alternate_resolution(const struct ratbag_profile *profile)
+{
+	return profile->alternate_resolution;
 }
 
 LIBRATBAG_EXPORT int

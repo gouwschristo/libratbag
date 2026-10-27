@@ -817,6 +817,62 @@ ratbag_profile_get_angle_snapping(const struct ratbag_profile *profile);
 /**
  * @ingroup profile
  *
+ * Set the bunny-hopping (BHOP) timeout in milliseconds. The device stores it
+ * in 100 ms steps, so the value must be a multiple of 100; the field holds one
+ * byte, i.e. 0..25500 ms. A value of 0 disables the feature.
+ *
+ * @param profile A previously initialized ratbag profile
+ * @param value Timeout in ms, or -1 for devices without the feature
+ *
+ * @return zero on success or an error code on failure
+ */
+enum ratbag_error_code
+ratbag_profile_set_bhop_timeout(struct ratbag_profile *profile, int value);
+
+/**
+ * @ingroup profile
+ *
+ * Get the bunny-hopping (BHOP) timeout in milliseconds.
+ *
+ * @param profile A previously initialized ratbag profile
+ *
+ * @return Timeout in ms, -1 if the device does not support it
+ */
+int
+ratbag_profile_get_bhop_timeout(const struct ratbag_profile *profile);
+
+/**
+ * @ingroup profile
+ *
+ * Set which resolution is used while the alternate-DPI (G-shift / "sniper")
+ * button action is active — @ref
+ * RATBAG_BUTTON_ACTION_SPECIAL_RESOLUTION_ALTERNATE. The index refers to the
+ * profile's resolution list.
+ *
+ * @param profile A previously initialized ratbag profile
+ * @param index Resolution index, or -1 for devices without the feature
+ *
+ * @return zero on success or an error code on failure
+ */
+enum ratbag_error_code
+ratbag_profile_set_alternate_resolution(struct ratbag_profile *profile,
+					int index);
+
+/**
+ * @ingroup profile
+ *
+ * Get the resolution index used while the alternate-DPI action is active.
+ *
+ * @param profile A previously initialized ratbag profile
+ *
+ * @return Resolution index, -1 if the device does not support it
+ */
+int
+ratbag_profile_get_alternate_resolution(const struct ratbag_profile *profile);
+
+/**
+ * @ingroup profile
+ *
  * Set the debounce time in ms for the profile.
  *
  * If the profile mode is the currently active profile,
