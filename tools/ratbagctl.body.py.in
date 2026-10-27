@@ -586,6 +586,26 @@ def func_resolution_enabled_set(ratbagd: Ratbagd, args: argparse.Namespace) -> N
     commit(device, args)
 
 
+def func_resolution_lod_get(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
+    resolution, _profile, _device = find_resolution(ratbagd, args)
+    if RatbagdResolution.CAP_LOD not in resolution.capabilities:
+        print("The resolution does not support a lift-off distance")
+        sys.exit(1)
+    print(resolution.lod)
+
+
+def func_resolution_lod_set(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
+    resolution, _profile, device = find_resolution(ratbagd, args)
+    if RatbagdResolution.CAP_LOD not in resolution.capabilities:
+        print("The resolution does not support a lift-off distance")
+        sys.exit(1)
+    if args.lod_n not in (1, 2, 3):
+        print("The lift-off distance must be 1 (low), 2 (medium) or 3 (high)")
+        sys.exit(1)
+    resolution.lod = args.lod_n
+    commit(device, args)
+
+
 def func_profile_get(ratbagd: Ratbagd, args: argparse.Namespace) -> None:
     profile, device = find_profile(ratbagd, args)
     print_profile(device, profile, 0)
@@ -997,6 +1017,34 @@ active profile if none is given.""",
                             name: "set",
                             help_str: "Set resolution as enabled",
                             func: func_resolution_enabled_set,
+                        },
+                    ],
+                },
+                {
+                    of_type: switch,
+                    name: "lod",
+                    help_str: "access lift-off distance information",
+                    switch: [
+                        {
+                            of_type: command,
+                            name: "get",
+                            help_str: "Show the lift-off distance",
+                            func: func_resolution_lod_get,
+                        },
+                        {
+                            of_type: command,
+                            name: "set",
+                            help_str: "Set the lift-off distance to N",
+                            pos_args: [
+                                {
+                                    of_type: argument,
+                                    name: "lod_n",
+                                    metavar: "N",
+                                    help_str: "The lift-off distance: 1 low, 2 medium, 3 high",
+                                    arg_type: int,
+                                },
+                            ],
+                            func: func_resolution_lod_set,
                         },
                     ],
                 },

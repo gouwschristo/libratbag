@@ -225,6 +225,8 @@ struct ratbag_resolution {
 	unsigned int dpi_x;	/**< x resolution in dpi */
 	unsigned int dpi_y;	/**< y resolution in dpi */
 
+	/**< lift-off distance: 1 low, 2 medium, 3 high (0 = unsupported) */
+	int lod;
 
 	bool is_active;
 	bool is_default;
@@ -567,7 +569,7 @@ static inline void
 ratbag_resolution_set_cap(struct ratbag_resolution *res,
 			  enum ratbag_resolution_capability cap)
 {
-	assert(cap <= RATBAG_RESOLUTION_CAP_DISABLE);
+	assert(cap <= RATBAG_RESOLUTION_CAP_LOD);
 
 	res->capabilities |= (1 << cap);
 }

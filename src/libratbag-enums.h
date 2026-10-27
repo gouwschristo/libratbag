@@ -143,6 +143,13 @@ enum ratbag_resolution_capability {
 	 * capability to add or remove resolutions.
 	 */
 	RATBAG_RESOLUTION_CAP_DISABLE,
+
+	/**
+	 * The resolution carries a lift-off distance (LOD) that can be set
+	 * independently per resolution. Valid values are 1 (low), 2 (medium)
+	 * and 3 (high).
+	 */
+	RATBAG_RESOLUTION_CAP_LOD,
 };
 
 /**

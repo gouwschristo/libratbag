@@ -56,6 +56,7 @@ int ratbagd_resolution_resync(sd_bus *bus,
 					      "IsActive",
 					      "IsDefault",
 					      "IsDisabled",
+					      "Lod",
 					      NULL);
 }
 
@@ -214,6 +215,51 @@ static int ratbagd_resolution_set_disabled(sd_bus *bus,
 }
 
 static int
+ratbagd_resolution_get_lod(sd_bus *bus,
+			   const char *path,
+			   const char *interface,
+			   const char *property,
+			   sd_bus_message *reply,
+			   void *userdata,
+			   sd_bus_error *error)
+{
+	struct ratbagd_resolution *resolution = userdata;
+	struct ratbag_resolution *lib_resolution = resolution->lib_resolution;
+	const int lod = ratbag_resolution_get_lod(lib_resolution);
+
+	CHECK_CALL(sd_bus_message_append(reply, "u", lod));
+
+	return 0;
+}
+
+static int
+ratbagd_resolution_set_lod(sd_bus *bus,
+			   const char *path,
+			   const char *interface,
+			   const char *property,
+			   sd_bus_message *m,
+			   void *userdata,
+			   sd_bus_error *error)
+{
+	struct ratbagd_resolution *resolution = userdata;
+	int lod;
+	int r;
+
+	CHECK_CALL(sd_bus_message_read(m, "u", &lod));
+
+	r = ratbag_resolution_set_lod(resolution->lib_resolution, lod);
+	if (r == 0) {
+		sd_bus_emit_properties_changed(bus,
+					       resolution->path,
+					       RATBAGD_NAME_ROOT ".Resolution",
+					       "Lod",
+					       NULL);
+	}
+
+	return 0;
+}
+
+static int
 ratbagd_resolution_get_resolutions(sd_bus *bus,
 				  const char *path,
 				  const char *interface,
@@ -323,6 +369,7 @@ ratbagd_resolution_get_capabilities(sd_bus *bus,
 	enum ratbag_resolution_capability caps[] = {
 		RATBAG_RESOLUTION_CAP_SEPARATE_XY_RESOLUTION,
 		RATBAG_RESOLUTION_CAP_DISABLE,
+		RATBAG_RESOLUTION_CAP_LOD,
 	};
 	size_t i;
 
@@ -352,6 +399,10 @@ const sd_bus_vtable ratbagd_resolution_vtable[] = {
 	SD_BUS_WRITABLE_PROPERTY("Resolution", "v",
 				 ratbagd_resolution_get_resolution,
 				 ratbagd_resolution_set_resolution, 0,
+				 SD_BUS_VTABLE_UNPRIVILEGED|SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
+	SD_BUS_WRITABLE_PROPERTY("Lod", "u",
+				 ratbagd_resolution_get_lod,
+				 ratbagd_resolution_set_lod, 0,
 				 SD_BUS_VTABLE_UNPRIVILEGED|SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
 	SD_BUS_PROPERTY("Resolutions", "au", ratbagd_resolution_get_resolutions, 0, SD_BUS_VTABLE_PROPERTY_CONST),
 	SD_BUS_PROPERTY("Capabilities", "au", ratbagd_resolution_get_capabilities, 0, SD_BUS_VTABLE_PROPERTY_CONST),

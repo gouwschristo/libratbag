@@ -2593,10 +2593,16 @@ hidpp20_onboard_profiles_write_sector(struct hidpp20_device *device,
 		return rc;
 
 	for (transferred = 0; transferred < sector_size; transferred += 16) {
-		rc = hidpp20_onboard_profiles_write_data(device, data, feature_index);
+		uint8_t chunk[16] = { 0 };
+		size_t remaining = sector_size - transferred;
+
+		/* A 255-byte sector ends mid-chunk; send it zero-padded instead of
+		 * reading past the end of the caller's buffer. */
+		memcpy(chunk, data + transferred, remaining < 16 ? remaining : 16);
+
+		rc = hidpp20_onboard_profiles_write_data(device, chunk, feature_index);
 		if (rc)
 			return rc;
-		data += 16;
 	}
 
 	rc = hidpp20_onboard_profiles_write_end(device, feature_index);
@@ -3086,20 +3092,19 @@ hidpp20_onboard_profiles_write_dict(struct hidpp20_device *device,
 
 	data = hidpp20_onboard_profiles_allocate_sector(profiles_list);
 
+	/* Read-modify-write: the device fills each entry's reserved byte with
+	 * 0xFF and pads the sector after the terminator. Rebuilding the sector
+	 * from our own values rewrites bytes we do not model. */
+	rc = hidpp20_onboard_profiles_read_sector(device, 0x0000, sector_size, data);
+	if (rc < 0)
+		return rc;
+
 	for (i = 0; i < profiles_list->num_profiles; i++) {
 		data[buffer_index++] = 0x00;
 		data[buffer_index++] = i + 1;
 		data[buffer_index++] = !!profiles_list->profiles[i].enabled;
-		data[buffer_index++] = 0x00;
+		buffer_index++;		/* reserved, preserved */
 	}
-
-	data[buffer_index++] = 0xFF;
-	data[buffer_index++] = 0xFF;
-
-	data[buffer_index++] = 0x00;
-	data[buffer_index++] = 0x00;
-
-	memset(data + buffer_index, 0xff, sector_size - buffer_index);
 
 	hidpp_log_buf_raw(&device->base,
 			   "dictionary: ",
@@ -3594,7 +3599,16 @@ hidpp20_onboard_profiles_write_profile_ext(struct hidpp20_device *device,
 	data = hidpp20_onboard_profiles_allocate_sector(profiles_list);
 	pdata = (union hidpp20_internal_profile_ext *)data;
 
-	memset(data, 0xff, profiles_list->sector_size);
+	/* Read-modify-write. This format has reserved regions (29..36, 38..43,
+	 * 252), an alternate/G-shift button block and LED blocks that we do not
+	 * model here; memset()ing the sector first overwrites them with 0xFF and
+	 * silently changes the user's configuration. */
+	rc = hidpp20_onboard_profiles_read_sector(device,
+						  sector,
+						  profiles_list->sector_size,
+						  data);
+	if (rc < 0)
+		return rc;
 
 	pdata->profile.report_rate = profile->report_rate;
 	pdata->profile.report_rate_wireless = profile->report_rate_wireless;
@@ -3619,7 +3633,24 @@ hidpp20_onboard_profiles_write_profile_ext(struct hidpp20_device *device,
 
 	hidpp20_buttons_from_cpu(profile, pdata->profile.buttons, profiles_list->num_buttons);
 
-	memcpy(pdata->profile.name.txt, profile->name, sizeof(profile->name));
+	/* An unset name is stored as 0xFF padding and reads back as "". Writing
+	 * zeros instead would rewrite 48 bytes of the sector for a name that is
+	 * unchanged, so keep the device's representation. */
+	{
+		bool empty = true;
+
+		for (i = 0; i < sizeof(profile->name); i++) {
+			if (profile->name[i] != '\0') {
+				empty = false;
+				break;
+			}
+		}
+
+		if (empty)
+			memset(pdata->profile.name.raw, 0xFF, sizeof(profile->name));
+		else
+			memcpy(pdata->profile.name.txt, profile->name, sizeof(profile->name));
+	}
 
 	rc = hidpp20_onboard_profiles_write_sector(device, sector, sector_size, data, true);
 	if (rc < 0) {
@@ -3712,14 +3743,19 @@ hidpp20_onboard_profiles_commit(struct hidpp20_device *device,
 	for (i = 0; i < profiles_list->num_profiles; i++) {
 		profile = &profiles_list->profiles[i];
 
-		if (profile->enabled) {
+		if (profile->enabled)
+			enabled_profile = true;
+
+		/* A disabled profile still has to be written when the user changed
+		 * it, otherwise editing an inactive profile silently does nothing. */
+		if (profile->enabled || profile->dirty) {
 			rc = hidpp20_onboard_profiles_write_profile(device,
 								    profiles_list,
 								    i);
 			if (rc < 0)
 				return rc;
 
-			enabled_profile = true;
+			profile->dirty = false;
 		}
 	}
 

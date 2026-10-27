@@ -975,6 +975,35 @@ ratbag_resolution_has_capability(const struct ratbag_resolution *resolution,
 /**
  * @ingroup resolution
  *
+ * Get the lift-off distance (LOD) of this resolution.
+ *
+ * Only meaningful if the resolution has the @ref
+ * RATBAG_RESOLUTION_CAP_LOD capability.
+ *
+ * @param resolution A previously initialized ratbag resolution
+ *
+ * @return 1 (low), 2 (medium) or 3 (high), 0 if the device has no LOD
+ */
+int
+ratbag_resolution_get_lod(const struct ratbag_resolution *resolution);
+
+/**
+ * @ingroup resolution
+ *
+ * Set the lift-off distance (LOD) of this resolution. LOD is stored per
+ * resolution, not per profile.
+ *
+ * @param resolution A previously initialized ratbag resolution
+ * @param lod 1 (low), 2 (medium) or 3 (high)
+ *
+ * @return zero on success or an error code on failure
+ */
+enum ratbag_error_code
+ratbag_resolution_set_lod(struct ratbag_resolution *resolution, int lod);
+
+/**
+ * @ingroup resolution
+ *
  * Set the resolution in DPI for the resolution mode.
  * If the resolution has the @ref
  * RATBAG_RESOLUTION_CAP_SEPARATE_XY_RESOLUTION capability, this function

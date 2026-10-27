@@ -1145,6 +1145,9 @@ hidpp20drv_update_resolution_dpi_8100(struct ratbag_resolution *resolution,
 	h_profile->dpi[resolution->index].x = dpi_x;
 	h_profile->dpi[resolution->index].y = dpi_y;
 
+	if (ratbag_resolution_has_capability(resolution, RATBAG_RESOLUTION_CAP_LOD))
+		h_profile->dpi[resolution->index].lod = resolution->lod;
+
 	if (resolution->is_default)
 		h_profile->default_dpi = resolution->index;
 
@@ -1573,6 +1576,13 @@ hidpp20drv_read_profile_8100(struct ratbag_profile *profile)
 		}
 		ratbag_resolution_set_resolution(res, dpi_x, dpi_y);
 
+		/* LOD is stored per resolution in the extended profile
+		 * formats (0x06/0x07); a value of 0 means "not supported". */
+		if (sensor->has_lod) {
+			ratbag_resolution_set_cap(res, RATBAG_RESOLUTION_CAP_LOD);
+			res->lod = p->dpi[res->index].lod;
+		}
+
 		if (profile->is_active &&
 		    res->index == (unsigned int)dpi_index)
 			res->is_active = true;
@@ -1939,8 +1949,16 @@ hidpp20drv_commit(struct ratbag_device *device)
 	}
 
 	if (drv_data->capabilities & HIDPP_CAP_ONBOARD_PROFILES_8100) {
-		list_for_each(profile, &device->profiles, link)
-			drv_data->profiles->profiles[profile->index].enabled = profile->is_enabled;
+		list_for_each(profile, &device->profiles, link) {
+			struct hidpp20_profile *h_profile =
+				&drv_data->profiles->profiles[profile->index];
+
+			h_profile->enabled = profile->is_enabled;
+			/* remembers which profile needs writing, so that a change to
+			 * a disabled profile is not dropped by the commit below */
+			if (profile->dirty)
+				h_profile->dirty = true;
+		}
 
 		rc = hidpp20_onboard_profiles_commit(drv_data->dev,
 						     drv_data->profiles);

@@ -977,7 +977,7 @@ LIBRATBAG_EXPORT bool
 ratbag_resolution_has_capability(const struct ratbag_resolution *resolution,
 				 enum ratbag_resolution_capability cap)
 {
-	assert(cap <= RATBAG_RESOLUTION_CAP_DISABLE);
+	assert(cap <= RATBAG_RESOLUTION_CAP_LOD);
 
 	return !!(resolution->capabilities & (1 << cap));
 }
@@ -1112,6 +1112,35 @@ LIBRATBAG_EXPORT int
 ratbag_resolution_get_dpi_y(const struct ratbag_resolution *resolution)
 {
 	return resolution->dpi_y;
+}
+
+LIBRATBAG_EXPORT int
+ratbag_resolution_get_lod(const struct ratbag_resolution *resolution)
+{
+	if (!ratbag_resolution_has_capability(resolution, RATBAG_RESOLUTION_CAP_LOD))
+		return 0;
+
+	return resolution->lod;
+}
+
+LIBRATBAG_EXPORT enum ratbag_error_code
+ratbag_resolution_set_lod(struct ratbag_resolution *resolution, int lod)
+{
+	struct ratbag_profile *profile = resolution->profile;
+
+	if (!ratbag_resolution_has_capability(resolution, RATBAG_RESOLUTION_CAP_LOD))
+		return RATBAG_ERROR_CAPABILITY;
+
+	if (lod < 1 || lod > 3)
+		return RATBAG_ERROR_VALUE;
+
+	if (resolution->lod != lod) {
+		resolution->lod = lod;
+		resolution->dirty = true;
+		profile->dirty = true;
+	}
+
+	return RATBAG_SUCCESS;
 }
 
 LIBRATBAG_EXPORT int

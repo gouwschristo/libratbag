@@ -967,6 +967,8 @@ struct hidpp20_profile {
 	union hidpp20_macro_data *macros[32];
 	struct hidpp20_led leds[HIDPP20_LED_COUNT];
 	struct hidpp20_led alt_leds[HIDPP20_LED_COUNT];
+	/* set when a ratbag profile changed, so disabled profiles are written too */
+	bool dirty;
 };
 
 struct hidpp20_onboard_profiles_info {
