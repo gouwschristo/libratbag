@@ -225,11 +225,14 @@ def print_resolution(
     else:
         dpi = f"{resolution.resolution[0]}"
 
+    lod = f" LOD{resolution.lod}" if resolution.lod > 0 else ""
+
     print(
         " " * level
-        + "{}: {}dpi{}{}{}".format(
+        + "{}: {}dpi{}{}{}{}".format(
             resolution.index,
             dpi,
+            lod,
             " (active)" if resolution.is_active else "",
             " (default)" if resolution.is_default else "",
             " (disabled)" if resolution.is_disabled else "",
@@ -260,6 +263,20 @@ def print_profile(device: RatbagdDevice, profile: RatbagdProfile, level: int) ->
             print(" " * level + f"Angle Snapping: {bool(profile.angle_snapping)}")
         if profile.debounce != -1:
             print(" " * level + f"Debounce time: {profile.debounce}ms")
+        if profile.bhop_timeout != -1:
+            print(" " * level + f"BHOP timeout: {profile.bhop_timeout}ms")
+        if profile.power_save_timeout != -1:
+            print(
+                " " * level
+                + f"Power save timeout: {profile.power_save_timeout}s"
+            )
+        if profile.power_off_timeout != -1:
+            print(" " * level + f"Power off timeout: {profile.power_off_timeout}s")
+        if profile.shift_resolution != -1:
+            print(
+                " " * level
+                + f"Shift resolution: {profile.shift_resolution}"
+            )
         if profile.buttons:
             for button in profile.buttons:
                 print_button(device, profile, button, level)
