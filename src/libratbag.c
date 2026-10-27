@@ -1166,10 +1166,13 @@ ratbag_profile_get_angle_snapping(const struct ratbag_profile *profile)
 LIBRATBAG_EXPORT enum ratbag_error_code
 ratbag_profile_set_bhop_timeout(struct ratbag_profile *profile, int value)
 {
+	if (profile->bhop_timeout == -1)
+		return RATBAG_ERROR_CAPABILITY;
+
 	/* The field is one byte in 100 ms steps, so the expressible range is
 	 * 0..25500. G HUB's UI only offers 0, 100 and 1000, but keeping the full
 	 * range means a value read from the device can be written back. */
-	if (value != -1 && (value < 0 || value > 25500 || value % 100 != 0))
+	if (value < 0 || value > 25500 || value % 100 != 0)
 		return RATBAG_ERROR_VALUE;
 
 	if (profile->bhop_timeout != value) {
@@ -1191,7 +1194,10 @@ LIBRATBAG_EXPORT enum ratbag_error_code
 ratbag_profile_set_alternate_resolution(struct ratbag_profile *profile,
 					int index)
 {
-	if (index != -1 && (index < 0 || (unsigned int)index >= profile->num_resolutions))
+	if (profile->alternate_resolution == -1)
+		return RATBAG_ERROR_CAPABILITY;
+
+	if (index < 0 || (unsigned int)index >= profile->num_resolutions)
 		return RATBAG_ERROR_VALUE;
 
 	if (profile->alternate_resolution != index) {
@@ -1213,8 +1219,11 @@ LIBRATBAG_EXPORT enum ratbag_error_code
 ratbag_profile_set_power_save_timeout(struct ratbag_profile *profile,
 				      int seconds)
 {
+	if (profile->power_save_timeout == -1)
+		return RATBAG_ERROR_CAPABILITY;
+
 	/* Stored as an unsigned 16-bit value in seconds */
-	if (seconds != -1 && (seconds < 0 || seconds > 0xFFFF))
+	if (seconds < 0 || seconds > 0xFFFF)
 		return RATBAG_ERROR_VALUE;
 
 	if (profile->power_save_timeout != seconds) {
@@ -1236,7 +1245,10 @@ LIBRATBAG_EXPORT enum ratbag_error_code
 ratbag_profile_set_power_off_timeout(struct ratbag_profile *profile,
 				     int seconds)
 {
-	if (seconds != -1 && (seconds < 0 || seconds > 0xFFFF))
+	if (profile->power_off_timeout == -1)
+		return RATBAG_ERROR_CAPABILITY;
+
+	if (seconds < 0 || seconds > 0xFFFF)
 		return RATBAG_ERROR_VALUE;
 
 	if (profile->power_off_timeout != seconds) {

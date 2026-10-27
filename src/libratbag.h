@@ -822,7 +822,7 @@ ratbag_profile_get_angle_snapping(const struct ratbag_profile *profile);
  * byte, i.e. 0..25500 ms. A value of 0 disables the feature.
  *
  * @param profile A previously initialized ratbag profile
- * @param value Timeout in ms, or -1 for devices without the feature
+ * @param value Timeout in ms, a multiple of 100 up to 25500
  *
  * @return zero on success or an error code on failure
  */
@@ -850,7 +850,7 @@ ratbag_profile_get_bhop_timeout(const struct ratbag_profile *profile);
  * profile's resolution list.
  *
  * @param profile A previously initialized ratbag profile
- * @param index Resolution index, or -1 for devices without the feature
+ * @param index Resolution index within this profile
  *
  * @return zero on success or an error code on failure
  */
@@ -877,7 +877,7 @@ ratbag_profile_get_alternate_resolution(const struct ratbag_profile *profile);
  * low-power state, in seconds. 0 disables the timeout.
  *
  * @param profile A previously initialized ratbag profile
- * @param seconds Timeout in seconds (0..65535), or -1 if unsupported
+ * @param seconds Timeout in seconds (0..65535)
  *
  * @return zero on success or an error code on failure
  */
@@ -903,7 +903,7 @@ ratbag_profile_get_power_save_timeout(const struct ratbag_profile *profile);
  * Set how long the device waits before powering off, in seconds.
  *
  * @param profile A previously initialized ratbag profile
- * @param seconds Timeout in seconds (0..65535), or -1 if unsupported
+ * @param seconds Timeout in seconds (0..65535)
  *
  * @return zero on success or an error code on failure
  */

@@ -538,6 +538,113 @@ START_TEST(device_resolutions_num_0)
 }
 END_TEST
 
+START_TEST(profile_fields_unsupported)
+{
+	struct ratbag *r;
+	struct ratbag_device *d;
+	struct ratbag_profile *p;
+	struct ratbag_resolution *res;
+	struct ratbag_test_device td = sane_device;
+
+	r = ratbag_create_context(&abort_iface, NULL);
+	d = ratbag_device_new_test_device(r, &td);
+	ck_assert(d != NULL);
+
+	p = ratbag_device_get_profile(d, 0);
+	ck_assert(p != NULL);
+	res = ratbag_profile_get_resolution(p, 0);
+	ck_assert(res != NULL);
+
+	/* The fake device models none of the extended fields: reading gives the
+	 * "unsupported" sentinel and writing must report a capability error
+	 * instead of silently accepting a value that would never reach flash. */
+	ck_assert_int_eq(ratbag_profile_get_bhop_timeout(p), -1);
+	ck_assert_int_eq(ratbag_profile_set_bhop_timeout(p, 100),
+			 RATBAG_ERROR_CAPABILITY);
+
+	ck_assert_int_eq(ratbag_profile_get_power_save_timeout(p), -1);
+	ck_assert_int_eq(ratbag_profile_set_power_save_timeout(p, 60),
+			 RATBAG_ERROR_CAPABILITY);
+
+	ck_assert_int_eq(ratbag_profile_get_power_off_timeout(p), -1);
+	ck_assert_int_eq(ratbag_profile_set_power_off_timeout(p, 300),
+			 RATBAG_ERROR_CAPABILITY);
+
+	ck_assert_int_eq(ratbag_profile_get_alternate_resolution(p), -1);
+	ck_assert_int_eq(ratbag_profile_set_alternate_resolution(p, 0),
+			 RATBAG_ERROR_CAPABILITY);
+
+	ck_assert_int_eq(ratbag_resolution_get_lod(res), 0);
+	ck_assert_int_eq(ratbag_resolution_set_lod(res, 2),
+			 RATBAG_ERROR_CAPABILITY);
+
+	ratbag_resolution_unref(res);
+	ratbag_profile_unref(p);
+	ratbag_device_unref(d);
+	ratbag_unref(r);
+}
+END_TEST
+
+START_TEST(profile_fields_set)
+{
+	struct ratbag *r;
+	struct ratbag_device *d;
+	struct ratbag_profile *p;
+	struct ratbag_resolution *res;
+	struct ratbag_test_device td = sane_device;
+
+	r = ratbag_create_context(&abort_iface, NULL);
+	d = ratbag_device_new_test_device(r, &td);
+	ck_assert(d != NULL);
+
+	p = ratbag_device_get_profile(d, 0);
+	ck_assert(p != NULL);
+	res = ratbag_profile_get_resolution(p, 0);
+	ck_assert(res != NULL);
+
+	/* Pretend the driver advertised the fields, as hidpp20 does for the
+	 * 0x06/0x07 profile formats. */
+	p->bhop_timeout = 0;
+	p->power_save_timeout = 60;
+	p->power_off_timeout = 300;
+	p->alternate_resolution = 0;
+	ratbag_resolution_set_cap(res, RATBAG_RESOLUTION_CAP_LOD);
+	res->lod = 2;
+
+	ck_assert_int_eq(ratbag_profile_set_bhop_timeout(p, 100), RATBAG_SUCCESS);
+	ck_assert_int_eq(ratbag_profile_get_bhop_timeout(p), 100);
+	ck_assert_int_eq(ratbag_profile_set_bhop_timeout(p, 150), RATBAG_ERROR_VALUE);
+	ck_assert_int_eq(ratbag_profile_set_bhop_timeout(p, -1), RATBAG_ERROR_VALUE);
+	ck_assert_int_eq(ratbag_profile_get_bhop_timeout(p), 100);
+
+	ck_assert_int_eq(ratbag_profile_set_power_save_timeout(p, 90), RATBAG_SUCCESS);
+	ck_assert_int_eq(ratbag_profile_get_power_save_timeout(p), 90);
+	ck_assert_int_eq(ratbag_profile_set_power_save_timeout(p, 70000),
+			 RATBAG_ERROR_VALUE);
+
+	ck_assert_int_eq(ratbag_profile_set_power_off_timeout(p, 65535), RATBAG_SUCCESS);
+	ck_assert_int_eq(ratbag_profile_get_power_off_timeout(p), 65535);
+
+	ck_assert_int_eq(ratbag_profile_set_alternate_resolution(p, 2), RATBAG_SUCCESS);
+	ck_assert_int_eq(ratbag_profile_get_alternate_resolution(p), 2);
+	ck_assert_int_eq(ratbag_profile_set_alternate_resolution(p, 3),
+			 RATBAG_ERROR_VALUE);
+
+	ck_assert_int_eq(ratbag_resolution_set_lod(res, 3), RATBAG_SUCCESS);
+	ck_assert_int_eq(ratbag_resolution_get_lod(res), 3);
+	ck_assert_int_eq(ratbag_resolution_set_lod(res, 4), RATBAG_ERROR_VALUE);
+	ck_assert_int_eq(ratbag_resolution_set_lod(res, 0), RATBAG_ERROR_VALUE);
+
+	/* every accepted change must mark the profile dirty for the commit */
+	ck_assert(ratbag_profile_is_dirty(p));
+
+	ratbag_resolution_unref(res);
+	ratbag_profile_unref(p);
+	ratbag_device_unref(d);
+	ratbag_unref(r);
+}
+END_TEST
+
 START_TEST(device_freed_before_profile)
 {
 	struct ratbag *r;
@@ -990,6 +1097,11 @@ test_context_suite(void)
 	tcase_add_test(tc, device_and_profile_freed_before_resolution);
 	tcase_add_test(tc, device_and_profile_and_button_freed_before_resolution);
 	tcase_add_test(tc, device_and_profile_and_resolution_freed_before_button);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("profile fields");
+	tcase_add_test(tc, profile_fields_unsupported);
+	tcase_add_test(tc, profile_fields_set);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("resolutions");
