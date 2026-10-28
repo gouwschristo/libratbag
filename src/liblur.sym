@@ -18,6 +18,7 @@ global:
 	lur_receiver_get_fd;
 	lur_receiver_get_user_data;
 	lur_receiver_new_from_hidraw;
+	lur_receiver_get_firmware_version;
 	lur_receiver_open;
 	lur_receiver_ref;
 	lur_receiver_set_user_data;

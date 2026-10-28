@@ -201,6 +201,55 @@ struct ratbagd_device *ratbagd_device_next(struct ratbagd_device *device);
 	     _device = (_safe),				\
 	     _safe = (_safe) ? ratbagd_device_next(_safe) : NULL)
 
+/*
+ * Receivers
+ */
+
+struct ratbagd;
+struct ratbagd_receiver;
+
+struct ratbagd_receiver_device {
+	unsigned int index;
+	char *name;
+	const char *type;
+	uint32_t serial;
+};
+
+extern const sd_bus_vtable ratbagd_receiver_vtable[];
+
+int ratbagd_receiver_new(struct ratbagd_receiver **out,
+			 struct ratbagd *ctx,
+			 const char *sysname);
+struct ratbagd_receiver *ratbagd_receiver_ref(struct ratbagd_receiver *receiver);
+struct ratbagd_receiver *ratbagd_receiver_unref(struct ratbagd_receiver *receiver);
+const char *ratbagd_receiver_get_sysname(struct ratbagd_receiver *receiver);
+const char *ratbagd_receiver_get_path(struct ratbagd_receiver *receiver);
+
+int ratbagd_receiver_get_devices(struct ratbagd_receiver *receiver,
+				 struct ratbagd_receiver_device **devices,
+				 size_t *ndevices);
+void ratbagd_receiver_devices_free(struct ratbagd_receiver_device *devices,
+				   size_t ndevices);
+int ratbagd_receiver_open_pairing(struct ratbagd_receiver *receiver,
+				  unsigned int timeout);
+int ratbagd_receiver_close_pairing(struct ratbagd_receiver *receiver);
+bool ratbagd_receiver_is_pairing(struct ratbagd_receiver *receiver);
+
+bool ratbagd_receiver_linked(struct ratbagd_receiver *receiver);
+void ratbagd_receiver_link(struct ratbagd_receiver *receiver);
+void ratbagd_receiver_unlink(struct ratbagd_receiver *receiver);
+struct ratbagd_receiver *ratbagd_receiver_lookup(struct ratbagd *ctx,
+						 const char *name);
+struct ratbagd_receiver *ratbagd_receiver_first(struct ratbagd *ctx);
+struct ratbagd_receiver *ratbagd_receiver_next(struct ratbagd_receiver *receiver);
+
+#define RATBAGD_RECEIVER_FOREACH(_receiver, _ctx)		\
+	for ((_receiver) = ratbagd_receiver_first(_ctx);	\
+	     (_receiver);					\
+	     (_receiver) = ratbagd_receiver_next(_receiver))
+
+DEFINE_TRIVIAL_CLEANUP_FUNC(struct ratbagd_receiver *, ratbagd_receiver_unref);
+
 /* Verify that _val is not -1. This traps DBus API errors where we end up
  * sending a valid-looking index across and then fail on the other side.
  *
@@ -229,6 +278,9 @@ struct ratbagd {
 
 	RBTree device_map;
 	size_t n_devices;
+
+	RBTree receiver_map;
+	size_t n_receivers;
 
 	const char **themes; /* NULL-terminated */
 };

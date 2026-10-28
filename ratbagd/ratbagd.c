@@ -31,6 +31,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <libratbag.h>
+#include <liblur.h>
 #include <libudev.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -165,15 +166,103 @@ static int ratbagd_get_devices(sd_bus *bus,
 	return 0;
 }
 
+static int ratbagd_get_receivers(sd_bus *bus,
+				const char *path,
+				const char *interface,
+				const char *property,
+				sd_bus_message *reply,
+				void *userdata,
+				sd_bus_error *error)
+{
+	struct ratbagd *ctx = userdata;
+	struct ratbagd_receiver *receiver;
+
+	CHECK_CALL(sd_bus_message_open_container(reply, 'a', "o"));
+
+	RATBAGD_RECEIVER_FOREACH(receiver, ctx) {
+		CHECK_CALL(sd_bus_message_append(reply,
+						 "o",
+						 ratbagd_receiver_get_path(receiver)));
+	}
+
+	CHECK_CALL(sd_bus_message_close_container(reply));
+
+	return 0;
+}
+
 static const sd_bus_vtable ratbagd_vtable[] = {
 	SD_BUS_VTABLE_START(0),
 	SD_BUS_PROPERTY("APIVersion", "i", 0, offsetof(struct ratbagd, api_version), SD_BUS_VTABLE_PROPERTY_CONST),
 	SD_BUS_PROPERTY("Devices", "ao", ratbagd_get_devices, 0, SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
+	SD_BUS_PROPERTY("Receivers", "ao", ratbagd_get_receivers, 0, SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
 #ifdef RATBAG_DEVELOPER_EDITION
 	SD_BUS_METHOD("LoadTestDevice", "s", "i", ratbagd_load_test_device, SD_BUS_VTABLE_UNPRIVILEGED),
 #endif /* RATBAG_DEVELOPER_EDITION */
 	SD_BUS_VTABLE_END,
 };
+
+static bool
+is_receiver_hidraw(struct udev_device *udevice)
+{
+	const char *vid, *pid;
+
+	vid = udev_device_get_property_value(udevice, "ID_VENDOR_ID");
+	pid = udev_device_get_property_value(udevice, "ID_MODEL_ID");
+	if (!vid || !pid)
+		return false;
+
+	return lur_is_receiver((uint16_t)strtol(vid, NULL, 16),
+			       (uint16_t)strtol(pid, NULL, 16));
+}
+
+static void
+ratbagd_process_receiver(struct ratbagd *ctx,
+			 struct udev_device *udevice)
+{
+	struct ratbagd_receiver *receiver;
+	const char *sysname;
+	int r;
+
+	sysname = udev_device_get_sysname(udevice);
+	if (!sysname || !startswith(sysname, "hidraw"))
+		return;
+	if (!is_receiver_hidraw(udevice))
+		return;
+
+	receiver = ratbagd_receiver_lookup(ctx, sysname);
+
+	if (streq_ptr("remove", udev_device_get_action(udevice))) {
+		if (receiver) {
+			ratbagd_receiver_unlink(receiver);
+			ratbagd_receiver_unref(receiver);
+
+			(void) sd_bus_emit_properties_changed(ctx->bus,
+							      RATBAGD_OBJ_ROOT,
+							      RATBAGD_NAME_ROOT ".Manager",
+							      "Receivers",
+							      NULL);
+		}
+		return;
+	}
+
+	if (receiver)
+		return;
+
+	r = ratbagd_receiver_new(&receiver, ctx, sysname);
+	if (r < 0) {
+		log_error("%s: cannot track receiver\n", sysname);
+		return;
+	}
+
+	ratbagd_receiver_link(receiver);
+	log_info("%s: receiver\n", sysname);
+
+	(void) sd_bus_emit_properties_changed(ctx->bus,
+					      RATBAGD_OBJ_ROOT,
+					      RATBAGD_NAME_ROOT ".Manager",
+					      "Receivers",
+					      NULL);
+}
 
 static void ratbagd_process_device(struct ratbagd *ctx,
 				   struct udev_device *udevice)
@@ -195,6 +284,9 @@ static void ratbagd_process_device(struct ratbagd *ctx,
 	sysname = udev_device_get_sysname(udevice);
 	if (!sysname || !startswith(sysname, "hidraw"))
 		return;
+
+	/* a receiver has no profiles, so it never becomes a ratbag device */
+	ratbagd_process_receiver(ctx, udevice);
 
 	device = ratbagd_device_lookup(ctx, sysname);
 
@@ -295,6 +387,7 @@ static struct ratbagd *ratbagd_free(struct ratbagd *ctx)
 	ctx->event = sd_event_unref(ctx->event);
 
 	assert(!ctx->device_map.root);
+	assert(!ctx->receiver_map.root);
 	assert(!ctx->lib_ctx); /* ratbag returns non-NULL if still pinned */
 
 	return mfree(ctx);

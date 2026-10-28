@@ -122,7 +122,29 @@ lur_device_disconnect(struct lur_device *dev)
 _EXPORT_ int
 lur_is_receiver(uint16_t vid, uint16_t pid)
 {
-	return (vid == USB_VENDOR_ID_LOGITECH && (pid == 0xc52b || pid == 0xc532));
+	if (vid != USB_VENDOR_ID_LOGITECH)
+		return 0;
+
+	switch (pid) {
+	/* Unifying and Nano receivers. */
+	case 0xc52b:
+	case 0xc532:
+	/* LIGHTSPEED receivers. They speak the same HID++ 1.0 pairing
+	 * registers (0xb5 for per-slot pairing information, 0xb2 for
+	 * open/close/unpair), so the only reason they were excluded was
+	 * that nobody had listed them. */
+	case 0xc539:
+	case 0xc53a:
+	case 0xc53d:
+	case 0xc53f:
+	case 0xc541:
+	case 0xc545:
+	case 0xc547:
+	case 0xc54d:
+		return 1;
+	}
+
+	return 0;
 }
 
 static bool
@@ -266,6 +288,15 @@ lur_receiver_enumerate(struct lur_receiver *lur,
 	*devices_out = devices;
 
 	return ndevices;
+}
+
+_EXPORT_ int
+lur_receiver_get_firmware_version(struct lur_receiver *lur,
+				  uint8_t *major,
+				  uint8_t *minor,
+				  uint8_t *build)
+{
+	return hidpp10_get_firmware_information(lur->hidppdev, major, minor, build);
 }
 
 _EXPORT_ int

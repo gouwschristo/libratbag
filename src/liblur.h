@@ -168,6 +168,24 @@ int
 lur_receiver_close(struct lur_receiver *lur);
 
 /**
+ * Read the receiver's own firmware version. This is also the cheapest way to
+ * tell a live HID++ interface from a dead one: a receiver USB device usually
+ * exposes several hidraw nodes and only one of them answers HID++.
+ *
+ * @param lur A valid receiver object
+ * @param major Set to the major version
+ * @param minor Set to the minor version
+ * @param build Set to the build number
+ * @return 0 on success or a negative errno, -EPIPE for an interface that does
+ *         not answer HID++
+ */
+int
+lur_receiver_get_firmware_version(struct lur_receiver *lur,
+				  uint8_t *major,
+				  uint8_t *minor,
+				  uint8_t *build);
+
+/**
  * Return the file descriptor used to initialize this receiver.
  *
  * @param lur A valid receiver object

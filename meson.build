@@ -372,6 +372,7 @@ src_ratbagd = [
 	'ratbagd/ratbagd-button.c',
 	'ratbagd/ratbagd-device.c',
 	'ratbagd/ratbagd-profile.c',
+	'ratbagd/ratbagd-receiver.c',
 	'ratbagd/ratbagd-resolution.c',
 	'ratbagd/ratbagd-test.c',
 	'ratbagd/ratbagd-json.c',
@@ -384,6 +385,7 @@ deps_ratbagd = [
 	dep_udev,
 	dep_logind,
 	dep_libratbag,
+	dep_liblur,
 	dep_rbtree,
 	dep_unistring,
 ]
