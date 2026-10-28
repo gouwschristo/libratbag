@@ -60,6 +60,7 @@
 #define HIDPP_CAP_RGB_EFFECTS_8071			(1 << 10)
 #define HIDPP_CAP_ADJUSTABLE_RESOLUTION_2202		(1 << 11)
 #define HIDPP_CAP_ADJUSTABLE_REPORT_RATE_8061		(1 << 12)
+#define HIDPP_CAP_UNIFIED_BATTERY_1004			(1 << 13)
 
 #define HIDPP_HIDDEN_FEATURE				(1 << 6)
 
@@ -1852,6 +1853,22 @@ hidpp20drv_init_feature(struct ratbag_device *device, uint16_t feature)
 		drv_data->capabilities |= HIDPP_CAP_BATTERY_LEVEL_1000;
 		break;
 	}
+	case HIDPP_PAGE_UNIFIED_BATTERY: {
+		uint8_t soc, level_flags, battery_status;
+
+		rc = hidpp20_unified_battery_get_status(drv_data->dev, &soc,
+							&level_flags,
+							&battery_status);
+		if (rc < 0)
+			return rc;
+
+		log_debug(ratbag,
+			  "device unified battery is %d%% (flags %02x), status %d \n",
+			  soc, level_flags, battery_status);
+
+		drv_data->capabilities |= HIDPP_CAP_UNIFIED_BATTERY_1004;
+		break;
+	}
 	case HIDPP_PAGE_BATTERY_VOLTAGE: {
 		uint16_t voltage;
 		enum hidpp20_battery_voltage_status status;
@@ -2065,6 +2082,10 @@ hidpp20drv_commit(struct ratbag_device *device)
 }
 
 static int
+hidpp20drv_get_battery(struct ratbag_device *device, int *percentage,
+		       enum ratbag_battery_status *status);
+
+static int
 hidpp20drv_20_probe(struct ratbag_device *device)
 {
 	struct hidpp20drv_data *drv_data = ratbag_get_drv_data(device);
@@ -2099,6 +2120,20 @@ hidpp20drv_20_probe(struct ratbag_device *device)
 		rc = hidpp20drv_init_profile_8100(device);
 		if (rc < 0)
 			return rc;
+
+		rc = hidpp20_onboard_profiles_get_onboard_mode(dev);
+		if (rc >= 0)
+			device->onboard_mode = (rc == HIDPP20_ONBOARD_MODE);
+	}
+
+	if (drv_data->capabilities & HIDPP_CAP_UNIFIED_BATTERY_1004) {
+		int percentage;
+		enum ratbag_battery_status status;
+
+		if (hidpp20drv_get_battery(device, &percentage, &status) == 0) {
+			device->battery_percentage = percentage;
+			device->battery_status = status;
+		}
 	}
 
 	return 0;
@@ -2246,6 +2281,55 @@ err:
 	return rc;
 }
 
+static int
+hidpp20drv_get_battery(struct ratbag_device *device, int *percentage,
+		       enum ratbag_battery_status *status)
+{
+	struct hidpp20drv_data *drv_data = ratbag_get_drv_data(device);
+	uint8_t soc, level_flags, battery_status;
+	int rc;
+
+	rc = hidpp20_unified_battery_get_status(drv_data->dev, &soc, &level_flags,
+						&battery_status);
+	if (rc < 0)
+		return rc;
+
+	*percentage = soc;
+	switch (battery_status) {
+	case BATTERY_STATUS_RECHARGING:
+	case BATTERY_STATUS_CHARGING_IN_FINAL_STATE:
+	case BATTERY_STATUS_RECHARGING_BELOW_OPTIMAL_SPEED:
+		*status = RATBAG_BATTERY_STATUS_RECHARGING;
+		break;
+	case BATTERY_STATUS_CHARGE_COMPLETE:
+		*status = RATBAG_BATTERY_STATUS_FULL;
+		break;
+	case BATTERY_STATUS_DISCHARGING:
+		/* level flag bit 3 means the "full" band while still discharging */
+		*status = (level_flags & 0x08) ? RATBAG_BATTERY_STATUS_FULL
+					       : RATBAG_BATTERY_STATUS_DISCHARGING;
+		break;
+	default:
+		*status = RATBAG_BATTERY_STATUS_UNKNOWN;
+		break;
+	}
+
+	return 0;
+}
+
+static int
+hidpp20drv_set_onboard_mode(struct ratbag_device *device, bool onboard)
+{
+	struct hidpp20drv_data *drv_data = ratbag_get_drv_data(device);
+
+	if (!(drv_data->capabilities & HIDPP_CAP_ONBOARD_PROFILES_8100))
+		return -ENOTSUP;
+
+	return hidpp20_onboard_profiles_set_onboard_mode(drv_data->dev,
+							 onboard ? HIDPP20_ONBOARD_MODE
+								 : HIDPP20_HOST_MODE);
+}
+
 struct ratbag_driver hidpp20_driver = {
 	.name = "Logitech HID++2.0",
 	.id = "hidpp20",
@@ -2253,4 +2337,6 @@ struct ratbag_driver hidpp20_driver = {
 	.remove = hidpp20drv_remove,
 	.commit = hidpp20drv_commit,
 	.set_active_profile = hidpp20drv_set_current_profile,
+	.get_battery = hidpp20drv_get_battery,
+	.set_onboard_mode = hidpp20drv_set_onboard_mode,
 };

@@ -457,6 +457,47 @@ hidpp20_batterylevel_get_battery_level(struct hidpp20_device *device,
 }
 
 /* -------------------------------------------------------------------------- */
+/* 0x1004: Unified battery                                                    */
+/* -------------------------------------------------------------------------- */
+
+#define CMD_UNIFIED_BATTERY_GET_CAPABILITIES	0x00
+#define CMD_UNIFIED_BATTERY_GET_STATUS		0x10
+
+int
+hidpp20_unified_battery_get_status(struct hidpp20_device *device,
+				   uint8_t *state_of_charge,
+				   uint8_t *level_flags,
+				   uint8_t *battery_status)
+{
+	uint8_t feature_index;
+	union hidpp20_message msg = {
+		.msg.report_id = REPORT_ID_LONG,
+		.msg.device_idx = device->index,
+		.msg.address = CMD_UNIFIED_BATTERY_GET_STATUS,
+	};
+	int rc;
+
+	feature_index = hidpp_root_get_feature_idx(device,
+						   HIDPP_PAGE_UNIFIED_BATTERY);
+	if (feature_index == 0)
+		return -ENOTSUP;
+
+	msg.msg.sub_id = feature_index;
+
+	rc = hidpp20_request_command(device, &msg);
+	if (rc)
+		return rc;
+
+	/* state of charge (%), level flags (bit 0 critical .. bit 3 full),
+	 * battery status (same values as enum hidpp20_battery_status) */
+	*state_of_charge = msg.msg.parameters[0];
+	*level_flags = msg.msg.parameters[1];
+	*battery_status = msg.msg.parameters[2];
+
+	return 0;
+}
+
+/* -------------------------------------------------------------------------- */
 /* 0x1001: Battery voltage                                                    */
 /* -------------------------------------------------------------------------- */
 
@@ -2312,8 +2353,6 @@ int hidpp20_ext_adjustable_report_rate_set_report_rate(struct hidpp20_device *de
 #define HIDPP20_BUTTON_HID		0x80
 
 #define HIDPP20_MODE_NO_CHANGE				0x00
-#define HIDPP20_ONBOARD_MODE				0x01
-#define HIDPP20_HOST_MODE				0x02
 
 #define HIDPP20_ONBOARD_PROFILES_MEMORY_TYPE_G402	0x01
 #define HIDPP20_ONBOARD_PROFILES_PROFILE_TYPE_G402	0x01
@@ -2612,7 +2651,7 @@ hidpp20_onboard_profiles_write_sector(struct hidpp20_device *device,
 	return 0;
 }
 
-static int
+int
 hidpp20_onboard_profiles_get_onboard_mode(struct hidpp20_device *device)
 {
 	uint8_t feature_index;
@@ -2637,7 +2676,7 @@ hidpp20_onboard_profiles_get_onboard_mode(struct hidpp20_device *device)
 	return msg.msg.parameters[0];
 }
 
-static int
+int
 hidpp20_onboard_profiles_set_onboard_mode(struct hidpp20_device *device,
 					  uint8_t onboard_mode)
 {

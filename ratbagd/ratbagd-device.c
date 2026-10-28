@@ -263,6 +263,83 @@ ratbagd_device_get_firmware_version(sd_bus *bus,
 	return sd_bus_message_append(reply, "s", version);
 }
 
+static int
+ratbagd_device_get_battery_percentage(sd_bus *bus,
+				      const char *path,
+				      const char *interface,
+				      const char *property,
+				      sd_bus_message *reply,
+				      void *userdata,
+				      sd_bus_error *error)
+{
+	struct ratbagd_device *device = userdata;
+	const int percentage =
+		ratbag_device_get_battery_percentage(device->lib_device);
+
+	return sd_bus_message_append(reply, "i", percentage);
+}
+
+static int
+ratbagd_device_get_battery_status(sd_bus *bus,
+				  const char *path,
+				  const char *interface,
+				  const char *property,
+				  sd_bus_message *reply,
+				  void *userdata,
+				  sd_bus_error *error)
+{
+	struct ratbagd_device *device = userdata;
+	const enum ratbag_battery_status status =
+		ratbag_device_get_battery_status(device->lib_device);
+
+	return sd_bus_message_append(reply, "u", (unsigned int)status);
+}
+
+static int
+ratbagd_device_get_onboard_mode(sd_bus *bus,
+				const char *path,
+				const char *interface,
+				const char *property,
+				sd_bus_message *reply,
+				void *userdata,
+				sd_bus_error *error)
+{
+	struct ratbagd_device *device = userdata;
+
+	return sd_bus_message_append(reply, "b",
+				     ratbag_device_get_onboard_mode(device->lib_device));
+}
+
+static int
+ratbagd_device_set_onboard_mode(sd_bus *bus,
+				const char *path,
+				const char *interface,
+				const char *property,
+				sd_bus_message *m,
+				void *userdata,
+				sd_bus_error *error)
+{
+	struct ratbagd_device *device = userdata;
+	int onboard;
+	int r;
+
+	CHECK_CALL(sd_bus_message_read(m, "b", &onboard));
+
+	r = ratbag_device_set_onboard_mode(device->lib_device, !!onboard);
+	if (r == RATBAG_ERROR_CAPABILITY)
+		return sd_bus_error_setf(error, SD_BUS_ERROR_NOT_SUPPORTED,
+					 "This device has no onboard mode switch");
+	if (r)
+		return sd_bus_error_setf(error, SD_BUS_ERROR_FAILED,
+					 "Could not switch device mode");
+
+	sd_bus_emit_properties_changed(bus, device->path,
+				       RATBAGD_NAME_ROOT ".Device",
+				       "OnboardMode", NULL);
+
+	return 0;
+}
+
 const sd_bus_vtable ratbagd_device_vtable[] = {
 	SD_BUS_VTABLE_START(0),
 	SD_BUS_PROPERTY("Model", "s", ratbagd_device_get_model, 0, SD_BUS_VTABLE_PROPERTY_CONST),
@@ -270,6 +347,12 @@ const sd_bus_vtable ratbagd_device_vtable[] = {
 	SD_BUS_PROPERTY("Name", "s", ratbagd_device_get_device_name, 0, SD_BUS_VTABLE_PROPERTY_CONST),
 	SD_BUS_PROPERTY("FirmwareVersion", "s", ratbagd_device_get_firmware_version, 0, SD_BUS_VTABLE_PROPERTY_CONST),
 	SD_BUS_PROPERTY("Profiles", "ao", ratbagd_device_get_profiles, 0, SD_BUS_VTABLE_PROPERTY_CONST),
+	SD_BUS_PROPERTY("BatteryPercentage", "i", ratbagd_device_get_battery_percentage, 0, SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
+	SD_BUS_PROPERTY("BatteryStatus", "u", ratbagd_device_get_battery_status, 0, SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
+	SD_BUS_WRITABLE_PROPERTY("OnboardMode", "b",
+				 ratbagd_device_get_onboard_mode,
+				 ratbagd_device_set_onboard_mode, 0,
+				 SD_BUS_VTABLE_UNPRIVILEGED|SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
 	SD_BUS_METHOD("Commit", "", "u", ratbagd_device_commit, SD_BUS_VTABLE_UNPRIVILEGED),
 	SD_BUS_SIGNAL("Resync", "", 0),
 	SD_BUS_VTABLE_END,

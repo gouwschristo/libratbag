@@ -93,6 +93,58 @@ struct ratbag;
 struct ratbag_device;
 
 /**
+ * @ingroup device
+ *
+ * Get the device's battery state of charge in percent.
+ *
+ * @return 0..100, or -1 if the device does not report a battery
+ */
+int
+ratbag_device_get_battery_percentage(const struct ratbag_device *device);
+
+/**
+ * @ingroup device
+ *
+ * Get the device's battery status.
+ *
+ * @return one of @ref ratbag_battery_status
+ */
+enum ratbag_battery_status
+ratbag_device_get_battery_status(const struct ratbag_device *device);
+
+/**
+ * @ingroup device
+ *
+ * Whether the device can switch between onboard and host mode.
+ */
+bool
+ratbag_device_has_onboard_mode_capability(const struct ratbag_device *device);
+
+/**
+ * @ingroup device
+ *
+ * Get the device mode.
+ *
+ * In onboard mode the device drives its configuration from its own flash; in
+ * host mode the host configures it live and the firmware rejects live writes
+ * while onboard mode is active.
+ *
+ * @return true for onboard mode, false for host mode
+ */
+bool
+ratbag_device_get_onboard_mode(const struct ratbag_device *device);
+
+/**
+ * @ingroup device
+ *
+ * Set the device mode, see ratbag_device_get_onboard_mode().
+ *
+ * @return zero on success or an error code on failure
+ */
+enum ratbag_error_code
+ratbag_device_set_onboard_mode(struct ratbag_device *device, bool onboard);
+
+/**
  * @ingroup profile
  * @struct ratbag_profile
  *

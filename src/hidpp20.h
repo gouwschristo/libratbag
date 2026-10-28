@@ -153,6 +153,25 @@ int hidpp20_batterylevel_get_battery_level(struct hidpp20_device *device,
 					   uint16_t *next_level);
 
 /* -------------------------------------------------------------------------- */
+/* 0x1004: Unified battery                                                    */
+/* -------------------------------------------------------------------------- */
+#define HIDPP_PAGE_UNIFIED_BATTERY			0x1004
+
+/**
+ * Retrieves the battery state of charge and status.
+ *
+ * @param state_of_charge percentage, 0..100
+ * @param level_flags bitfield: 1 critical, 2 low, 4 good, 8 full
+ * @param battery_status see enum hidpp20_battery_status
+ *
+ * @return 0 on success or a negative errno on error
+ */
+int hidpp20_unified_battery_get_status(struct hidpp20_device *device,
+				       uint8_t *state_of_charge,
+				       uint8_t *level_flags,
+				       uint8_t *battery_status);
+
+/* -------------------------------------------------------------------------- */
 /* 0x1001: Battery Voltage                                                    */
 /* -------------------------------------------------------------------------- */
 #define HIDPP_PAGE_BATTERY_VOLTAGE		0x1001
@@ -1038,6 +1057,20 @@ hidpp20_onboard_profiles_initialize(struct hidpp20_device *device,
 /**
  * return the current profile index or a negative error.
  */
+enum hidpp20_onboard_mode {
+	HIDPP20_ONBOARD_MODE = 0x01,
+	HIDPP20_HOST_MODE = 0x02,
+};
+
+/* Returns one of enum hidpp20_onboard_mode, or a negative errno when the device
+ * has no onboard profiles. */
+int
+hidpp20_onboard_profiles_get_onboard_mode(struct hidpp20_device *device);
+
+int
+hidpp20_onboard_profiles_set_onboard_mode(struct hidpp20_device *device,
+					  uint8_t onboard_mode);
+
 int hidpp20_onboard_profiles_get_current_profile(struct hidpp20_device *device);
 
 /**

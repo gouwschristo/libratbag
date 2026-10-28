@@ -645,6 +645,60 @@ START_TEST(profile_fields_set)
 }
 END_TEST
 
+START_TEST(device_battery_unsupported)
+{
+	struct ratbag *r;
+	struct ratbag_device *d;
+	struct ratbag_test_device td = sane_device;
+
+	r = ratbag_create_context(&abort_iface, NULL);
+	d = ratbag_device_new_test_device(r, &td);
+	ck_assert(d != NULL);
+
+	/* The fake device reports no battery: the percentage reads as -1 so
+	 * callers can hide the value, and the status is UNKNOWN. */
+	ck_assert_int_eq(ratbag_device_get_battery_percentage(d), -1);
+	ck_assert_int_eq(ratbag_device_get_battery_status(d),
+			 RATBAG_BATTERY_STATUS_UNKNOWN);
+	ck_assert(!ratbag_device_has_onboard_mode_capability(d));
+	ck_assert_int_eq(ratbag_device_set_onboard_mode(d, false),
+			 RATBAG_ERROR_CAPABILITY);
+
+	ratbag_device_unref(d);
+	ratbag_unref(r);
+}
+END_TEST
+
+START_TEST(device_battery_and_mode)
+{
+	struct ratbag *r;
+	struct ratbag_device *d;
+	struct ratbag_test_device td = sane_device;
+
+	r = ratbag_create_context(&abort_iface, NULL);
+	d = ratbag_device_new_test_device(r, &td);
+	ck_assert(d != NULL);
+
+	d->battery_percentage = 64;
+	d->battery_status = RATBAG_BATTERY_STATUS_DISCHARGING;
+	d->onboard_mode = 1;
+
+	ck_assert_int_eq(ratbag_device_get_battery_percentage(d), 64);
+	ck_assert_int_eq(ratbag_device_get_battery_status(d),
+			 RATBAG_BATTERY_STATUS_DISCHARGING);
+	ck_assert(ratbag_device_has_onboard_mode_capability(d));
+	ck_assert(ratbag_device_get_onboard_mode(d));
+
+	ck_assert_int_eq(ratbag_device_set_onboard_mode(d, false), RATBAG_SUCCESS);
+	ck_assert(!ratbag_device_get_onboard_mode(d));
+	ck_assert_int_eq(ratbag_device_set_onboard_mode(d, true), RATBAG_SUCCESS);
+	ck_assert(ratbag_device_get_onboard_mode(d));
+
+	ratbag_device_unref(d);
+	ratbag_unref(r);
+}
+END_TEST
+
 START_TEST(device_freed_before_profile)
 {
 	struct ratbag *r;
@@ -1111,6 +1165,8 @@ test_context_suite(void)
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("buttons");
+	tcase_add_test(tc, device_battery_unsupported);
+	tcase_add_test(tc, device_battery_and_mode);
 	tcase_add_test(tc, device_buttons);
 	tcase_add_test(tc, device_buttons_ref_unref);
 	tcase_add_test(tc, device_buttons_set);

@@ -293,6 +293,15 @@ def print_device(device: RatbagdDevice, level: int) -> None:
     print(" " * level + f"       Device Type: {device.device_type.name.capitalize()}")
     if device.firmware_version:
         print(" " * level + f"  Firmware version: {device.firmware_version}")
+    if device.battery_percentage >= 0:
+        print(
+            " " * level
+            + f"           Battery: {device.battery_percentage}% ({device.battery_status.name.capitalize()})"
+        )
+    print(
+        " " * level
+        + f"       Device Mode: {'on-board' if device.onboard_mode else 'host'}"
+    )
     print(" " * level + f" Number of Buttons: {len(profile.buttons)}")
     print(" " * level + f"    Number of Leds: {len(profile.leds)}")
     print(" " * level + f"Number of Profiles: {len(device.profiles)}")

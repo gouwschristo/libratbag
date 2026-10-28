@@ -196,6 +196,9 @@ ratbag_device_new(struct ratbag *ratbag, struct udev_device *udev_device,
 	device->udev_device = udev_device_ref(udev_device);
 	device->ids = *id;
 	device->data = ratbag_device_data_new_for_id(ratbag, id);
+	device->battery_percentage = -1;
+	device->battery_status = RATBAG_BATTERY_STATUS_UNKNOWN;
+	device->onboard_mode = -1;	/* until the driver reports otherwise */
 
 	if (device->data != NULL)
 		device->devicetype = ratbag_device_data_get_device_type(device->data);
@@ -1813,6 +1816,50 @@ LIBRATBAG_EXPORT const char*
 ratbag_device_get_firmware_version(const struct ratbag_device *ratbag_device)
 {
 	return ratbag_device->firmware_version;
+}
+
+LIBRATBAG_EXPORT int
+ratbag_device_get_battery_percentage(const struct ratbag_device *device)
+{
+	return device->battery_percentage;
+}
+
+LIBRATBAG_EXPORT enum ratbag_battery_status
+ratbag_device_get_battery_status(const struct ratbag_device *device)
+{
+	return device->battery_status;
+}
+
+LIBRATBAG_EXPORT bool
+ratbag_device_has_onboard_mode_capability(const struct ratbag_device *device)
+{
+	return device->onboard_mode >= 0;
+}
+
+LIBRATBAG_EXPORT bool
+ratbag_device_get_onboard_mode(const struct ratbag_device *device)
+{
+	return device->onboard_mode > 0;
+}
+
+LIBRATBAG_EXPORT enum ratbag_error_code
+ratbag_device_set_onboard_mode(struct ratbag_device *device, bool onboard)
+{
+	int rc;
+
+	if (device->onboard_mode < 0)
+		return RATBAG_ERROR_CAPABILITY;
+
+	if (device->driver->set_onboard_mode == NULL)
+		return RATBAG_ERROR_CAPABILITY;
+
+	rc = device->driver->set_onboard_mode(device, onboard);
+	if (rc)
+		return RATBAG_ERROR_DEVICE;
+
+	device->onboard_mode = onboard ? 1 : 0;
+
+	return RATBAG_SUCCESS;
 }
 
 LIBRATBAG_EXPORT void

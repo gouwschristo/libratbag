@@ -148,6 +148,13 @@ struct ratbag_device {
 
 	char* firmware_version;
 
+	/** battery state of charge in percent, -1 when unknown/unsupported */
+	int battery_percentage;
+	enum ratbag_battery_status battery_status;
+
+	/** 1 onboard, 0 host, -1 unsupported */
+	int onboard_mode;
+
 	void *drv_data;
 
 	struct list link;
@@ -205,6 +212,19 @@ struct ratbag_driver {
 	 * .write_profile() call is issued before calling this.
 	 */
 	int (*set_active_profile)(struct ratbag_device *device, unsigned int index);
+
+	/**
+	 * Read the battery state. Drivers that support this should fill
+	 * device->battery_percentage and device->battery_status in probe();
+	 * this callback is used to refresh them on demand.
+	 */
+	int (*get_battery)(struct ratbag_device *device, int *percentage,
+			   enum ratbag_battery_status *status);
+
+	/**
+	 * Switch between onboard and host mode, where the device supports it.
+	 */
+	int (*set_onboard_mode)(struct ratbag_device *device, bool onboard);
 
 	/* private */
 	int (*test_probe)(struct ratbag_device *device, const void *data);

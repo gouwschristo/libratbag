@@ -265,6 +265,13 @@ test_commit(struct ratbag_device *device)
 	return 0;
 }
 
+static int
+test_set_onboard_mode(struct ratbag_device *device, bool onboard)
+{
+	/* the fake device has no flash: accept any mode change */
+	return 0;
+}
+
 struct ratbag_driver test_driver = {
 	.name = "Test driver",
 	.id = "test_driver",
@@ -273,4 +280,5 @@ struct ratbag_driver test_driver = {
 	.remove = test_remove,
 	.commit = test_commit,
 	.set_active_profile = test_set_active_profile,
+	.set_onboard_mode = test_set_onboard_mode,
 };

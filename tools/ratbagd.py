@@ -69,6 +69,15 @@ class RatbagErrorCode(IntEnum):
     IMPLEMENTATION = -1004
 
 
+class RatbagBatteryStatus(IntEnum):
+    """Battery status of a device."""
+
+    UNKNOWN = 0
+    DISCHARGING = 1
+    RECHARGING = 2
+    FULL = 3
+
+
 class RatbagDeviceType(IntEnum):
     """DeviceType property specified in the .device files"""
 
@@ -395,6 +404,28 @@ class RatbagdDevice(_RatbagdDBus):
     def firmware_version(self):
         """The firmware version of the device."""
         return self._get_dbus_property("FirmwareVersion")
+
+    @GObject.Property
+    def battery_percentage(self):
+        """The device battery charge in percent, or -1 if the device does not
+        report a battery."""
+        return self._get_dbus_property("BatteryPercentage")
+
+    @GObject.Property
+    def battery_status(self):
+        """The device battery status, see RatbagBatteryStatus, or UNKNOWN if the
+        device does not report a battery status."""
+        return RatbagBatteryStatus(self._get_dbus_property("BatteryStatus"))
+
+    @GObject.Property
+    def onboard_mode(self):
+        """True if the device is applying its internal (on-board) profiles,
+        False if the host software is driving the device."""
+        return self._get_dbus_property("OnboardMode")
+
+    @onboard_mode.setter
+    def onboard_mode(self, enable):
+        self._set_dbus_property("OnboardMode", "b", bool(enable))
 
     @GObject.Property
     def profiles(self):

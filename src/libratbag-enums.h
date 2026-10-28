@@ -131,6 +131,25 @@ enum ratbag_profile_capability {
 /**
  * @ingroup enums
  */
+/**
+ * @ingroup enums
+ */
+enum ratbag_battery_status {
+	RATBAG_BATTERY_STATUS_UNKNOWN = 0,
+
+	/** The device is running on battery. */
+	RATBAG_BATTERY_STATUS_DISCHARGING,
+
+	/** The battery is charging. */
+	RATBAG_BATTERY_STATUS_RECHARGING,
+
+	/** The battery reports itself full. */
+	RATBAG_BATTERY_STATUS_FULL,
+};
+
+/**
+ * @ingroup enums
+ */
 enum ratbag_resolution_capability {
 	/**
 	 * The resolution can be set for x and y separately.
