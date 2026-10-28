@@ -248,11 +248,12 @@ ratbagd_process_receiver(struct ratbagd *ctx,
 	if (receiver)
 		return;
 
+	/* A receiver USB device exposes several hidraw nodes and only one of
+	 * them answers HID++, so a failure here is normal and not worth an
+	 * error: hidraw1/hidraw3 on this host look like receivers to udev. */
 	r = ratbagd_receiver_new(&receiver, ctx, sysname);
-	if (r < 0) {
-		log_error("%s: cannot track receiver\n", sysname);
+	if (r < 0)
 		return;
-	}
 
 	ratbagd_receiver_link(receiver);
 	log_info("%s: receiver\n", sysname);
@@ -285,12 +286,11 @@ static void ratbagd_process_device(struct ratbagd *ctx,
 	if (!sysname || !startswith(sysname, "hidraw"))
 		return;
 
-	/* a receiver has no profiles, so it never becomes a ratbag device */
-	ratbagd_process_receiver(ctx, udevice);
-
 	device = ratbagd_device_lookup(ctx, sysname);
 
 	if (streq_ptr("remove", udev_device_get_action(udevice))) {
+		ratbagd_process_receiver(ctx, udevice);
+
 		/* device was removed, unlink it and destroy our context */
 		if (device) {
 			ratbagd_device_unlink(device);
@@ -311,8 +311,12 @@ static void ratbagd_process_device(struct ratbagd *ctx,
 		error = ratbag_device_new_from_udev_device(ctx->lib_ctx,
 							   udevice,
 							   &lib_device);
-		if (error != RATBAG_SUCCESS)
-			return; /* unsupported device */
+		if (error != RATBAG_SUCCESS) {
+			/* Not a configurable device. A receiver has no profiles, so
+			 * this is where it ends up; nothing else is worth a look. */
+			ratbagd_process_receiver(ctx, udevice);
+			return;
+		}
 
 		r = ratbagd_device_new(&device, ctx, sysname, lib_device);
 
