@@ -296,6 +296,21 @@ ratbagd_device_get_battery_status(sd_bus *bus,
 }
 
 static int
+ratbagd_device_has_onboard_mode(sd_bus *bus,
+				const char *path,
+				const char *interface,
+				const char *property,
+				sd_bus_message *reply,
+				void *userdata,
+				sd_bus_error *error)
+{
+	struct ratbagd_device *device = userdata;
+
+	return sd_bus_message_append(reply, "b",
+				     ratbag_device_has_onboard_mode_capability(device->lib_device));
+}
+
+static int
 ratbagd_device_get_onboard_mode(sd_bus *bus,
 				const char *path,
 				const char *interface,
@@ -349,6 +364,7 @@ const sd_bus_vtable ratbagd_device_vtable[] = {
 	SD_BUS_PROPERTY("Profiles", "ao", ratbagd_device_get_profiles, 0, SD_BUS_VTABLE_PROPERTY_CONST),
 	SD_BUS_PROPERTY("BatteryPercentage", "i", ratbagd_device_get_battery_percentage, 0, SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
 	SD_BUS_PROPERTY("BatteryStatus", "u", ratbagd_device_get_battery_status, 0, SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
+	SD_BUS_PROPERTY("HasOnboardMode", "b", ratbagd_device_has_onboard_mode, 0, SD_BUS_VTABLE_PROPERTY_CONST),
 	SD_BUS_WRITABLE_PROPERTY("OnboardMode", "b",
 				 ratbagd_device_get_onboard_mode,
 				 ratbagd_device_set_onboard_mode, 0,

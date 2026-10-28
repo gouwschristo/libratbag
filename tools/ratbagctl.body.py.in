@@ -298,10 +298,11 @@ def print_device(device: RatbagdDevice, level: int) -> None:
             " " * level
             + f"           Battery: {device.battery_percentage}% ({device.battery_status.name.capitalize()})"
         )
-    print(
-        " " * level
-        + f"       Device Mode: {'on-board' if device.onboard_mode else 'host'}"
-    )
+    if device.has_onboard_mode_capability:
+        print(
+            " " * level
+            + f"       Device Mode: {'on-board' if device.onboard_mode else 'host'}"
+        )
     print(" " * level + f" Number of Buttons: {len(profile.buttons)}")
     print(" " * level + f"    Number of Leds: {len(profile.leds)}")
     print(" " * level + f"Number of Profiles: {len(device.profiles)}")

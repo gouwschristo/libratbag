@@ -418,6 +418,11 @@ class RatbagdDevice(_RatbagdDBus):
         return RatbagBatteryStatus(self._get_dbus_property("BatteryStatus"))
 
     @GObject.Property
+    def has_onboard_mode_capability(self):
+        """Whether the device can switch between on-board and host mode."""
+        return bool(self._get_dbus_property("HasOnboardMode"))
+
+    @GObject.Property
     def onboard_mode(self):
         """True if the device is applying its internal (on-board) profiles,
         False if the host software is driving the device."""
