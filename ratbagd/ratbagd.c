@@ -216,6 +216,25 @@ is_receiver_hidraw(struct udev_device *udevice)
 }
 
 static void
+ratbagd_receiver_forget(struct ratbagd *ctx, const char *sysname)
+{
+	struct ratbagd_receiver *receiver;
+
+	receiver = ratbagd_receiver_lookup(ctx, sysname);
+	if (!receiver)
+		return;
+
+	ratbagd_receiver_unlink(receiver);
+	ratbagd_receiver_unref(receiver);
+
+	(void) sd_bus_emit_properties_changed(ctx->bus,
+					      RATBAGD_OBJ_ROOT,
+					      RATBAGD_NAME_ROOT ".Manager",
+					      "Receivers",
+					      NULL);
+}
+
+static void
 ratbagd_process_receiver(struct ratbagd *ctx,
 			 struct udev_device *udevice)
 {
@@ -229,23 +248,7 @@ ratbagd_process_receiver(struct ratbagd *ctx,
 	if (!is_receiver_hidraw(udevice))
 		return;
 
-	receiver = ratbagd_receiver_lookup(ctx, sysname);
-
-	if (streq_ptr("remove", udev_device_get_action(udevice))) {
-		if (receiver) {
-			ratbagd_receiver_unlink(receiver);
-			ratbagd_receiver_unref(receiver);
-
-			(void) sd_bus_emit_properties_changed(ctx->bus,
-							      RATBAGD_OBJ_ROOT,
-							      RATBAGD_NAME_ROOT ".Manager",
-							      "Receivers",
-							      NULL);
-		}
-		return;
-	}
-
-	if (receiver)
+	if (ratbagd_receiver_lookup(ctx, sysname))
 		return;
 
 	/* A receiver USB device exposes several hidraw nodes and only one of
@@ -289,7 +292,11 @@ static void ratbagd_process_device(struct ratbagd *ctx,
 	device = ratbagd_device_lookup(ctx, sysname);
 
 	if (streq_ptr("remove", udev_device_get_action(udevice))) {
-		ratbagd_process_receiver(ctx, udevice);
+		/* Bookkeeping only: never open a node that is going away. Probing
+		 * it as a receiver here used to send HID++ requests to a dying
+		 * node and wedge the receiver channel, so the next add of the
+		 * same mouse failed and it disappeared from ratbagd. */
+		ratbagd_receiver_forget(ctx, sysname);
 
 		/* device was removed, unlink it and destroy our context */
 		if (device) {
